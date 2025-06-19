@@ -8,13 +8,14 @@ from utils.data_loader import load_data
 USERS = {
     "admin": st.secrets.get("admin_password", "minha_senha_segura")
 }
+
 # Inicializa estado de login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Se não estiver logado, esconde sidebar e mostra formulário de login
+# Se não estiver logado, exibe formulário e interrompe
 if not st.session_state.logged_in:
-    # CSS para ocultar completamente a sidebar
+    # Oculta sidebar durante o login
     st.markdown(
         """
         <style>
@@ -31,13 +32,14 @@ if not st.session_state.logged_in:
     if st.button("Entrar"):
         if USERS.get(user) == pwd:
             st.session_state.logged_in = True
-            st.experimental_rerun()
+            st.success("Login bem-sucedido! Recarregue a página para continuar.")
         else:
             st.error("Usuário ou senha incorretos")
+    # Interrompe execução antes do restante do app
     st.stop()
 # ————————————————————————————————
 
-# 1) Configurações iniciais (após login, sidebar aparece normalmente)
+# 1) Configurações iniciais (sidebar visível após login)
 st.set_page_config(
     page_title="Meu Dashboard",
     layout="wide",
