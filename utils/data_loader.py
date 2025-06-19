@@ -12,9 +12,13 @@ def load_data(path: str = None) -> pd.DataFrame:
     """
     # 1. Carregamento bruto
     if not path:
-        # Busca via API
-        url = st.secrets.get("api_url")
-        key = st.secrets.get("api_key")
+        # Verifica configuração de secrets
+        url = st.secrets.get("URL")
+        key = st.secrets.get("API_KEY")
+        if not url or not key:
+            raise ValueError(
+                "Chave de API ou URL não configurada. Por favor, defina 'api_url' e 'api_key' em st.secrets."
+            )
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -23,12 +27,17 @@ def load_data(path: str = None) -> pd.DataFrame:
         participants = []
         seen_emails = set()
         first_email = ""
+        # Paginação até esgotar
         while True:
             body = {"firstEmail": first_email}
             resp = requests.post(url, json=body, headers=headers, timeout=30)
             resp.raise_for_status()
             envelope = resp.json()
-            payload = json.loads(envelope["body"]) if isinstance(envelope.get("body"), str) else envelope
+            # Extrai payload real
+            payload = (
+                json.loads(envelope["body"]) if isinstance(envelope.get("body"), str)
+                else envelope
+            )
             batch = payload.get("participants", []) or payload.get("items", [])
             if not batch:
                 break
@@ -54,13 +63,14 @@ def load_data(path: str = None) -> pd.DataFrame:
 
     # 2. Tratamento de timestamp (createdAt em milissegundos)
     if 'createdAt' in df.columns:
-        # converte string para int
         df['createdAt_ms'] = df['createdAt'].astype(int)
-        # datetime UTC
-        df['createdAt_utc'] = pd.to_datetime(df['createdAt_ms'], unit='ms', utc=True)
-        # converte para fuso local e remove tzinfo
-        df['createdAt_local'] = df['createdAt_utc'].dt.tz_convert('America/Sao_Paulo').dt.tz_localize(None)
-        # separa data e hora
+        df['createdAt_utc'] = pd.to_datetime(
+            df['createdAt_ms'], unit='ms', utc=True
+        )
+        df['createdAt_local'] = (
+            df['createdAt_utc'].dt.tz_convert('America/Sao_Paulo')
+            .dt.tz_localize(None)
+        )
         df['data'] = df['createdAt_local'].dt.date
         df['hora'] = df['createdAt_local'].dt.time
         df['createdAt_str'] = df['createdAt_local'].dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -91,7 +101,6 @@ def load_data(path: str = None) -> pd.DataFrame:
         '"Já foi atendido pelo Sebrae?";"O que melhor descreve a sua função?";"O que melhor descreve a sua atuação?";'
     )
     columns = [col.strip('"') for col in header_str.split(';')]
-    # Se o número de colunas bate, renomeia; senão, mantém original
     if len(columns) == len(df.columns):
         df.columns = columns
 
