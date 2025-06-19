@@ -10,28 +10,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# 2) Sidebar - configurações de fonte de dados
+# 2) Carregamento de dados via API (padrão)
 st.sidebar.title("Configurações")
-DATA_PATH = st.sidebar.text_input(
-    "Caminho do CSV (deixe vazio para usar API)",
-    ""
-)
 show_raw = st.sidebar.checkbox("Mostrar tabela de dados")
 
-# 3) Carregamento de dados
-def get_data(path: str) -> pd.DataFrame:
-    return load_data(path)
+df = load_data(path=None)  # path None indica uso da API
 
-df = get_data(DATA_PATH)
-
-# 4) Corpo principal
+# 3) Corpo principal
 st.title("📊 Dashboard de Exemplo")
 
 if show_raw:
     st.subheader("Dados carregados")
     st.dataframe(df)
 
-# 5) Seleção dinâmica de eixos
+# 4) Seleção dinâmica de eixos
 cols = df.columns.tolist()
 if not cols:
     st.error("Não há colunas para exibir no gráfico.")
@@ -46,7 +38,7 @@ else:
     if "data" in x_axis.lower():
         df[x_axis] = pd.to_datetime(df[x_axis], dayfirst=True, errors="coerce")
 
-    # 6) Gráfico
+    # 5) Gráfico
     fig = px.line(
         df,
         x=x_axis,
