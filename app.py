@@ -12,8 +12,19 @@ USERS = {
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Se não estiver logado, mostra formulário e interrompe execução
+# Se não estiver logado, esconde sidebar e mostra formulário de login
 if not st.session_state.logged_in:
+    # CSS para ocultar completamente a sidebar
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] {
+            visibility: hidden;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.title("🔒 Login")
     user = st.text_input("Usuário")
     pwd  = st.text_input("Senha", type="password")
@@ -26,7 +37,7 @@ if not st.session_state.logged_in:
     st.stop()
 # ————————————————————————————————
 
-# 1) Configurações iniciais
+# 1) Configurações iniciais (após login, sidebar aparece normalmente)
 st.set_page_config(
     page_title="Meu Dashboard",
     layout="wide",
