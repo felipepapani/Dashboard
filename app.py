@@ -12,37 +12,6 @@ from utils.data_loader import load_data
 
 # —————— Autenticação sem reload manual ——————
 # Defina credenciais válidas (use st.secrets em produção!)
-USERS = {
-    "admin": st.secrets.get("admin_password", "minha_senha_segura")
-}
-# Inicializa estado de login
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-# Se não estiver logado, exibe formulário de login e oculta sidebar
-if not st.session_state.logged_in:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] {
-            visibility: hidden;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.title("🔒 Login")
-    user = st.text_input("Usuário", key="login_user")
-    pwd  = st.text_input("Senha", type="password", key="login_pwd")
-    if st.button("Entrar"):
-        if USERS.get(user) == pwd:
-            st.session_state.logged_in = True
-            st.success("Login bem-sucedido!")
-        else:
-            st.error("Usuário ou senha incorretos")
-    # Interrompe execução até o login ser bem-sucedido
-    st.stop()
-# ————————————————————————————————
 
 # 2) Após login, exibe sidebar e configurações
 st.sidebar.title("Configurações")
