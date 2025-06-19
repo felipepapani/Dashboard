@@ -53,24 +53,24 @@ if show_raw:
     st.subheader("Dados brutos")
     st.dataframe(df)
 
-# 5) Agrupamento por data e cálculo acumulado
-if 'data' in df.columns:
-    df_agg = df.groupby('data').size().reset_index(name='inscricoes_diarias')
-    df_agg = df_agg.sort_values('data')
+# 5) Agrupamento por Data Inscrição e cálculo acumulado
+if 'Data Inscrição' in df.columns:
+    df_agg = df.groupby('Data Inscrição').size().reset_index(name='inscricoes_diarias')
+    df_agg = df_agg.sort_values('Data Inscrição')
     df_agg['inscricoes_acumuladas'] = df_agg['inscricoes_diarias'].cumsum()
 
     # Plot acumulado
     fig = px.line(
         df_agg,
-        x='data',
+        x='Data Inscrição',
         y='inscricoes_acumuladas',
         title="Inscrições Acumuladas ao Longo do Tempo",
         labels={
-            'data': 'Data',
+            'Data Inscrição': 'Data',
             'inscricoes_acumuladas': 'Total de Inscrições'
         }
     )
     fig.update_layout(xaxis_title='Data', yaxis_title='Total de Inscrições')
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.error("Coluna 'data' não encontrada para agrupamento.")
+    st.error("Coluna 'Data Inscrição' não encontrada para agrupamento.")
