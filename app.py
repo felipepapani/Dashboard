@@ -90,6 +90,10 @@ col4.metric(
 
 # 5) Preparação do gráfico de inscrições acumuladas
 
+# Definir datas de início fixas
+start_2024 = pd.Timestamp('2024-07-04 17:30:00')
+start_2025 = pd.Timestamp('2025-06-12 08:00:00')
+
 def prepare_cumulative(df, label):
     df['Data Inscrição'] = pd.to_datetime(df['Data Inscrição'], dayfirst=True, errors='coerce')
     df_agg = (
@@ -99,10 +103,17 @@ def prepare_cumulative(df, label):
           .sort_values('Data Inscrição')
     )
     df_agg['inscricoes_acumuladas'] = df_agg['inscricoes_diarias'].cumsum()
-    start_date = df_agg['Data Inscrição'].iloc[0]
+    # Usar datas de início predefinidas
+    if label == '2024':
+        start_date = start_2024
+    elif label == '2025':
+        start_date = start_2025
+    else:
+        start_date = df_agg['Data Inscrição'].iloc[0]
     df_agg['dias_desde_inicio'] = (
         df_agg['Data Inscrição'] - start_date
-    ).dt.days
+    ).dt.total_seconds() / (3600 * 24)
+    df_agg['dias_desde_inicio'] = df_agg['dias_desde_inicio'].astype(int)
     df_agg['ano'] = label
     return df_agg
 
