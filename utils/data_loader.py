@@ -92,16 +92,22 @@ def load_data(path: str = None) -> pd.DataFrame:
 
     # 4. Padronização do header, se necessário
     header_str = (
-        '"Email";"Tipo de ingresso";"Nome na credencial";"Nome";"apagar1";"QR Code";"Status do E-mail";'
-        '"Status da Inscrição";"apagar2";"Headline";"apagar3";"apagar4";"apagar5";'
-        '"apagar7";"Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";'
-        '"Com qual gênero você se identifica?";"Participou de algum RNP anterior? Se sim, quais as edições?";"Escolaridade";'
-        '"Temas de interesse";"Qual a sua principal área de atuação?";"Você é professor?";"Em qual empresa você trabalha?";'
-        '"Trabalha com tecnologia?;"A empresa em que você trabalha faz parte do Porto Digital?";"Você desenvolve alguma atividade empresarial?";'
-        '"Já foi atendido pelo Sebrae?";"O que melhor descreve a sua função?";"O que melhor descreve a sua atuação?";'
-    )
+    '"Email";"Tipo de ingresso";"Nome na credencial";"Nome";"apagar1";"QR Code";"Status do E-mail";'
+    '"APAGAR";"APAGAR";"Headline";"APAGAR";"APAGAR";"APAGAR";'
+    '"APAGAR";"APAGAR";"Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";'
+    '"Com qual gênero você se identifica?";"Participou de algum RNP anterior? Se sim, quais as edições?";"Escolaridade";'
+    '"Temas de interesse";"Qual a sua principal área de atuação?";"Você é professor?";"Em qual empresa você trabalha?";'
+    '"Trabalha com tecnologia?;"A empresa em que você trabalha faz parte do Porto Digital?";"Você desenvolve alguma atividade empresarial?";'
+    '"Já foi atendido pelo Sebrae?";"APAGAR";"APAGAR"'
+)
     columns = [col.strip('"') for col in header_str.split(';')]
     if len(columns) == len(df.columns):
         df.columns = columns
+    
+    df = df.loc[:, ~df.columns.str.lower().str.contains(r'apagar')]
+
+    # Opção 2: list comprehension + drop
+    cols_to_drop = [col for col in df.columns if 'apagar' in col.lower()]
+    df = df.drop(columns=cols_to_drop)
 
     return df

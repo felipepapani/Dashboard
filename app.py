@@ -44,24 +44,33 @@ st.sidebar.title("Configurações")
 show_raw = st.sidebar.checkbox("Mostrar tabela de dados")
 
 # 3) Carregamento de dados via API
+# Sempre busca via API
 df = load_data(path=None)
 
 # 4) Corpo principal
-st.title("📊 Dashboard de Inscrições por Data")
-
+st.title("📊 Dashboard de Inscrições Acumuladas")
 if show_raw:
     st.subheader("Dados brutos")
     st.dataframe(df)
 
-# 5) Agrupamento por data para contar inscrições
+# 5) Agrupamento por data e cálculo acumulado
 if 'data' in df.columns:
-    df_agg = df.groupby('data').size().reset_index(name='inscricoes')
+    df_agg = df.groupby('data').size().reset_index(name='inscricoes_diarias')
+    df_agg = df_agg.sort_values('data')
+    df_agg['inscricoes_acumuladas'] = df_agg['inscricoes_diarias'].cumsum()
+
+    # Plot acumulado
     fig = px.line(
         df_agg,
         x='data',
-        y='inscricoes',
-        title="Inscrições por Data",
+        y='inscricoes_acumuladas',
+        title="Inscrições Acumuladas ao Longo do Tempo",
+        labels={
+            'data': 'Data',
+            'inscricoes_acumuladas': 'Total de Inscrições'
+        }
     )
+    fig.update_layout(xaxis_title='Data', yaxis_title='Total de Inscrições')
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.error("Coluna 'data' não encontrada para agrupamento.")
