@@ -52,16 +52,11 @@ if not st.session_state.logged_in:
     st.stop()
 # —————— Fim autenticação ——————
 
-# 2) Carregar dados
+# 2) Carregar dados diretamente dos caminhos configurados
 # API 2025
 df_2025 = load_data(path=None)
-# CSV 2024 via upload
-uploaded_2024 = st.file_uploader("Upload do CSV de 2024", type=["csv"])
-if uploaded_2024:
-    df_2024 = load_data(path=uploaded_2024)
-else:
-    st.warning("Envie o CSV de 2024 para comparação.")
-    st.stop()
+# CSV 2024 a partir da pasta 'dados'
+df_2024 = load_data(path="./dados/2024.csv")
 
 # 3) Cabeçalho do dashboard
 st.markdown("# Dashboard de Inscrições - RNP 2024")
