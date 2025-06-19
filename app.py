@@ -33,7 +33,7 @@ if not st.session_state.logged_in:
 
 # Carregamento de dados
 df_2025 = load_data(path=None)
-df_2024 = load_data(path="dados\2024.csv")
+df_2024 = load_data(path="./dados/2024.csv")
 
 # Navegação por abas (tabs)
 tabs = st.tabs([
