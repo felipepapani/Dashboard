@@ -26,17 +26,65 @@ if not st.session_state.logged_in:
     st.stop()
 # —————— Fim autenticação ——————
 
-# Carregamento de dados
+# 2) Carregamento de dados
 # API 2025
 df_2025 = load_data(path=None)
 # CSV 2024 local
 df_2024 = load_data(path="./dados/2024.csv")
 
-# Função para preparar dados acumulados por Data Inscrição
+# 3) Cálculo de métricas comparativas
+# Total de Inscrições
+total_2025 = len(df_2025)
+total_2024 = len(df_2024)
+pct_total = (total_2025 - total_2024) / total_2024 * 100 if total_2024 else None
+
+# E-mails Confirmados (Status do E-mail contendo 'confirm')
+confirmed_2025 = df_2025['Status do E-mail'].str.contains('confirm', case=False, na=False).sum()
+confirmed_2024 = df_2024['Status do E-mail'].str.contains('confirm', case=False, na=False).sum()
+pct_confirmed = (confirmed_2025 - confirmed_2024) / confirmed_2024 * 100 if confirmed_2024 else None
+
+# Taxa de Confirmação
+tax_2025 = confirmed_2025 / total_2025 * 100 if total_2025 else None
+tax_2024 = confirmed_2024 / total_2024 * 100 if total_2024 else None
+pct_tax = tax_2025 - tax_2024 if tax_2024 is not None else None
+
+# Inscrições por Dia
+# Assumindo coluna Data Inscrição convertida
+df_2025['Data Inscrição'] = pd.to_datetime(df_2025['Data Inscrição'], dayfirst=True, errors='coerce')
+days_2025 = df_2025['Data Inscrição'].dt.date.nunique()
+avg_day_2025 = total_2025 / days_2025 if days_2025 else None
+df_2024['Data Inscrição'] = pd.to_datetime(df_2024['Data Inscrição'], dayfirst=True, errors='coerce')
+days_2024 = df_2024['Data Inscrição'].dt.date.nunique()
+avg_day_2024 = total_2024 / days_2024 if days_2024 else None
+pct_avg = (avg_day_2025 - avg_day_2024) / avg_day_2024 * 100 if avg_day_2024 else None
+
+# 4) Exibição de métricas em cards
+col1, col2, col3, col4 = st.columns(4)
+col1.metric(
+    "Total de Inscrições",
+    f"{total_2025:,}",
+    f"{pct_total:.1f}%"
+)
+col2.metric(
+    "E-mails Confirmados",
+    f"{confirmed_2025:,}",
+    f"{pct_confirmed:.1f}%"
+)
+col3.metric(
+    "Taxa de Confirmação",
+    f"{tax_2025:.1f}%",
+    f"{pct_tax:.1f}%"
+)
+col4.metric(
+    "Inscrições por Dia",
+    f"{avg_day_2025:.1f}",
+    f"{pct_avg:.1f}%"
+)
+
+# 5) Preparação do gráfico de inscrições acumuladas
+
 def prepare_cumulative(df, label):
-    df['Data Inscrição'] = pd.to_datetime(
-        df['Data Inscrição'], dayfirst=True, errors='coerce'
-    )
+    df['Data Inscrição'] = pd.to_datetime(df['Data Inscrição'], dayfirst=True, errors='coerce')
     df_agg = (
         df.groupby('Data Inscrição')
           .size()
@@ -51,12 +99,11 @@ def prepare_cumulative(df, label):
     df_agg['ano'] = label
     return df_agg
 
-# Prepara séries
+# Geração do gráfico
 cum2025 = prepare_cumulative(df_2025, '2025')
 cum2024 = prepare_cumulative(df_2024, '2024')
 df_concat = pd.concat([cum2024, cum2025], axis=0)
 
-# Plot do gráfico de linhas acumulado
 st.title("Inscrições Acumuladas 2024 vs 2025")
 fig = px.line(
     df_concat,
