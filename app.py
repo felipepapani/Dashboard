@@ -60,25 +60,32 @@ pct_avg = (avg_day_2025 - avg_day_2024) / avg_day_2024 * 100 if avg_day_2024 els
 
 # 4) Exibição de métricas em cards
 col1, col2, col3, col4 = st.columns(4)
+
+# Formatações de delta para evitar erros se None
+delta_total = f"{pct_total:.1f}%" if pct_total is not None else "—"
+delta_confirmed = f"{pct_confirmed:.1f}%" if pct_confirmed is not None else "—"
+delta_tax = f"{pct_tax:.1f}%" if pct_tax is not None else "—"
+delta_avg = f"{pct_avg:.1f}%" if pct_avg is not None else "—"
+
 col1.metric(
     "Total de Inscrições",
     f"{total_2025:,}",
-    f"{pct_total:.1f}%"
+    delta_total
 )
 col2.metric(
     "E-mails Confirmados",
     f"{confirmed_2025:,}",
-    f"{pct_confirmed:.1f}%"
+    delta_confirmed
 )
 col3.metric(
     "Taxa de Confirmação",
-    f"{tax_2025:.1f}%",
-    f"{pct_tax:.1f}%"
+    f"{tax_2025:.1f}%" if tax_2025 is not None else "—",
+    delta_tax
 )
 col4.metric(
     "Inscrições por Dia",
-    f"{avg_day_2025:.1f}",
-    f"{pct_avg:.1f}%"
+    f"{avg_day_2025:.1f}" if avg_day_2025 is not None else "—",
+    delta_avg
 )
 
 # 5) Preparação do gráfico de inscrições acumuladas
