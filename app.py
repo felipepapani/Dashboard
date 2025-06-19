@@ -34,48 +34,17 @@ df_2025 = load_data(path=None)
 df_2024 = load_data(path="./dados/2024.csv")
 
 # 3) Navegação via sidebar
-page = st.sidebar.radio(
-    "Navegação", [
-        "Visão Geral", 
-        "Demografia", 
-        "Geográfico", 
-        "Educação", 
-        "Profissional", 
-        "Comparativo"
-    ]
-)
+
 
 # 4) Conteúdo por página
-st.title(f"📊 {page}")
 
-if page == "Visão Geral":
-    st.markdown("Resumo geral das inscrições, principais KPIs e visão rápida do evento.")
-    # Adicione métricas e pequenos gráficos
-
-elif page == "Demografia":
-    st.markdown("Informações demográficas dos participantes.")
-    # Gráficos de gênero, idade, etc.
-
-elif page == "Geográfico":
-    st.markdown("Distribuição geográfica dos participantes.")
-    # Mapas ou gráficos por estado/cidade
-
-elif page == "Educação":
-    st.markdown("Nível de escolaridade e áreas de interesse dos participantes.")
-    # Gráficos de escolaridade
-
-elif page == "Profissional":
-    st.markdown("Perfil profissional e setores de atuação.")
-    # Gráficos de setor, empresa, cargo, etc.
-
-else:  # Comparativo
-    st.markdown("Comparativo de inscrições 2024 vs 2025")
-    show_raw = st.sidebar.checkbox("Mostrar dados brutos")
-    if show_raw:
-        st.subheader("Dados 2024")
-        st.dataframe(df_2024)
-        st.subheader("Dados 2025")
-        st.dataframe(df_2025)
+st.markdown("Comparativo de inscrições 2024 vs 2025")
+show_raw = st.sidebar.checkbox("Mostrar dados brutos")
+if show_raw:
+    st.subheader("Dados 2024")
+    st.dataframe(df_2024)
+    st.subheader("Dados 2025")
+    st.dataframe(df_2025)
 
     # Função para preparar dados acumulados
     def prepare_cumulative(df, label):
