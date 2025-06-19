@@ -3,6 +3,29 @@ import pandas as pd
 import plotly.express as px
 from utils.data_loader import load_data
 
+# —————— Autenticação ——————
+# Defina credenciais válidas (use st.secrets em produção!)
+USERS = {
+    "admin": st.secrets.get("admin_password", "minha_senha_segura")
+}
+# Inicializa estado de login
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+# Se não estiver logado, mostra formulário e interrompe execução
+if not st.session_state.logged_in:
+    st.title("🔒 Login")
+    user = st.text_input("Usuário")
+    pwd  = st.text_input("Senha", type="password")
+    if st.button("Entrar"):
+        if USERS.get(user) == pwd:
+            st.session_state.logged_in = True
+            st.experimental_rerun()
+        else:
+            st.error("Usuário ou senha incorretos")
+    st.stop()
+# ————————————————————————————————
+
 # 1) Configurações iniciais
 st.set_page_config(
     page_title="Meu Dashboard",
