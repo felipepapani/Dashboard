@@ -1,9 +1,8 @@
 import streamlit as st
-# 1) Configuração de página (sempre primeiro)
+# 1) Configuração de página
 st.set_page_config(
     page_title="Dashboard de Inscrições - RNP 2024",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 import pandas as pd
@@ -27,54 +26,48 @@ if not st.session_state.logged_in:
     st.stop()
 # —————— Fim autenticação ——————
 
-# 2) Carregamento de dados
+# Carregamento de dados
 # API 2025
 df_2025 = load_data(path=None)
-# CSV 2024 a partir da pasta 'dados'
+# CSV 2024 local
 df_2024 = load_data(path="./dados/2024.csv")
 
-# 3) Navegação via sidebar
+# Função para preparar dados acumulados por Data Inscrição
+def prepare_cumulative(df, label):
+    df['Data Inscrição'] = pd.to_datetime(
+        df['Data Inscrição'], dayfirst=True, errors='coerce'
+    )
+    df_agg = (
+        df.groupby('Data Inscrição')
+          .size()
+          .reset_index(name='inscricoes_diarias')
+          .sort_values('Data Inscrição')
+    )
+    df_agg['inscricoes_acumuladas'] = df_agg['inscricoes_diarias'].cumsum()
+    start_date = df_agg['Data Inscrição'].iloc[0]
+    df_agg['dias_desde_inicio'] = (
+        df_agg['Data Inscrição'] - start_date
+    ).dt.days
+    df_agg['ano'] = label
+    return df_agg
 
+# Prepara séries
+cum2025 = prepare_cumulative(df_2025, '2025')
+cum2024 = prepare_cumulative(df_2024, '2024')
+df_concat = pd.concat([cum2024, cum2025], axis=0)
 
-# 4) Conteúdo por página
-
-st.markdown("Comparativo de inscrições 2024 vs 2025")
-show_raw = st.sidebar.checkbox("Mostrar dados brutos")
-if show_raw:
-    st.subheader("Dados 2024")
-    st.dataframe(df_2024)
-    st.subheader("Dados 2025")
-    st.dataframe(df_2025)
-
-    # Função para preparar dados acumulados
-    def prepare_cumulative(df, label):
-        df['Data Inscrição'] = pd.to_datetime(df['Data Inscrição'], dayfirst=True, errors='coerce')
-        df_agg = df.groupby('Data Inscrição').size().reset_index(name='inscricoes_diarias')
-        df_agg = df_agg.sort_values('Data Inscrição')
-        df_agg['inscricoes_acumuladas'] = df_agg['inscricoes_diarias'].cumsum()
-        start_date = df_agg['Data Inscrição'].iloc[0]
-        df_agg['dias_desde_inicio'] = (df_agg['Data Inscrição'] - start_date).dt.days
-        df_agg['ano'] = label
-        return df_agg
-
-    # Verifica colunas
-    if 'Data Inscrição' in df_2025.columns and 'Data Inscrição' in df_2024.columns:
-        cum2025 = prepare_cumulative(df_2025, '2025')
-        cum2024 = prepare_cumulative(df_2024, '2024')
-        df_concat = pd.concat([cum2024, cum2025], axis=0)
-
-        fig = px.line(
-            df_concat,
-            x='dias_desde_inicio',
-            y='inscricoes_acumuladas',
-            color='ano',
-            title="Inscrições Acumuladas (Dias desde Início)",
-            labels={
-                'dias_desde_inicio': 'Dias desde Início',
-                'inscricoes_acumuladas': 'Total de Inscrições',
-                'ano': 'Ano'
-            }
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.error("A coluna 'Data Inscrição' não foi encontrada em um dos DataFrames.")
+# Plot do gráfico de linhas acumulado
+st.title("Inscrições Acumuladas 2024 vs 2025")
+fig = px.line(
+    df_concat,
+    x='dias_desde_inicio',
+    y='inscricoes_acumuladas',
+    color='ano',
+    labels={
+        'dias_desde_inicio': 'Dias desde Início',
+        'inscricoes_acumuladas': 'Total de Inscrições',
+        'ano': 'Ano'
+    },
+    title="Comparativo de Inscrições Acumuladas"
+)
+st.plotly_chart(fig, use_container_width=True)
