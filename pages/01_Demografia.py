@@ -289,4 +289,10 @@ fig = px.line(
     title='Evolução Mensal por Gênero em 2025 (Jun–Dez)'
 )
 fig.update_yaxes(range=[0,100], ticksuffix='%')
+fig.update_traces(
+    mode='lines+markers',
+    marker=dict(size=8),
+    hovertemplate='%{fullData.name}: %{y:.1f}%<extra></extra>'
+)
+fig.update_layout(hovermode='x unified')
 st.plotly_chart(fig, use_container_width=True)
