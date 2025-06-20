@@ -41,14 +41,13 @@ start_2025 = pd.Timestamp('2025-06-12 08:00:00')
 
 # 1) Estados Representados
 estados_2025 = df_2025['Estado'].nunique()
-estados_2024 = df_2024_est['Estado'].nunique()
 delta_estados = estados_2025 - estados_2024
 
 # 2) Países Participantes (continua usando df_2024 sem filtro de UF)
 paises_2025 = df_2025['País'].nunique()
 paises_2024 = df_2024['País'].nunique()
 delta_paises = paises_2025 - paises_2024
-print(sorted(df_2024_est['estado_proc'].unique()))
+
 
 
 # 3) Participantes Internacionais (idem)
