@@ -174,10 +174,21 @@ with col1:
 with col2:
     st.plotly_chart(fig_hist, use_container_width=True)
 
+def compute_idade(df, start_timestamp):
+    # converte strings para datetime, extrai só a parte date
+    births = pd.to_datetime(
+        df['Data de nascimento'], format='%d/%m/%Y', dayfirst=True, errors='coerce'
+    ).dt.date
+    start_date = start_timestamp.date()
+    # subtrai cada Python date e converte para dias
+    age_days = births.apply(lambda bd: (start_date - bd).days if pd.notnull(bd) else None)
+    # converte para anos e retorna inteiro
+    return (age_days / 365.25).fillna(0).astype(int)
+
 
 # —– Distribuição por Faixa Etária —–
 bins  = [0, 18, 25, 35, 45, 55, 65, 200]
-labels = ['<18', '18–25', '26–35', '36–45', '46–55', '56–65', '65+']
+labels = ["<18", "18–25", "26–35", "36–45", "46–55", "56–65", "65+"]
 
 # 1) Gera coluna 'idade' e depois 'faixa'
 for df, start in [(df_2024, start_2024), (df_2025, start_2025)]:
