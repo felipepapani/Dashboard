@@ -78,3 +78,64 @@ c3.metric("Participantes Internacionais",
 c4.metric("Concentração PE",
           f"{pct_pe_2025:.1f}%",
           f"{delta_pe:+.1f}% vs {pct_pe_2024:.1f}%")
+
+# ——— Continuação: Gráficos Comparativos ———
+
+# 5) Top 10 Estados — Comparativo 2024 vs 2025
+# filtra só siglas válidas em 2025
+df_2025_est = df_2025[
+    df_2025['Estado'].str.upper().isin(valid_states)
+].copy()
+
+# contagens por Estado
+cnt25 = df_2025_est['Estado'].str.upper().value_counts()
+cnt24 = df_2024_est['estado_proc'].value_counts()
+
+# top 10 de 2025
+top10 = cnt25.head(10).index.tolist()
+cnt25_top = cnt25.reindex(top10, fill_value=0)
+cnt24_top = cnt24.reindex(top10, fill_value=0)
+
+# monta DataFrame tidy
+df_states = pd.DataFrame({
+    'Estado': top10,
+    '2024': cnt24_top.values,
+    '2025': cnt25_top.values
+}).melt(id_vars='Estado', var_name='Ano', value_name='Inscrições')
+
+fig_states = px.bar(
+    df_states,
+    x='Estado',
+    y='Inscrições',
+    color='Ano',
+    barmode='group',
+    color_discrete_map={'2024':'#888888','2025':'#0066CC'},
+    title='Top 10 Estados — Comparativo 2024 vs 2025',
+    labels={'Inscrições':'Nº Inscrições'}
+)
+
+# 6) Participação Internacional — Distribuição por País (2025)
+pct_pais = df_2025['País'].value_counts(normalize=True).mul(100)
+df_pais = pct_pais.reset_index().rename(columns={'index':'País','País':'pct'}).sort_values('pct', ascending=False)
+
+# agrupa 'Outros' após top5
+top5 = df_pais.head(5)
+others_pct = df_pais['pct'].iloc[5:].sum()
+df_pais_plot = pd.concat([
+    top5,
+    pd.DataFrame([{'País':'Outros','pct':others_pct}])
+], ignore_index=True)
+
+fig_pais = px.pie(
+    df_pais_plot,
+    names='País',
+    values='pct',
+    title='Participação Internacional — Distribuição por País',
+    labels={'pct':'% Inscrições'}
+)
+fig_pais.update_traces(textinfo='label+percent', hoverinfo='label+percent')
+
+# Exibe os dois gráficos lado a lado
+col1, col2 = st.columns(2)
+col1.plotly_chart(fig_states, use_container_width=True)
+col2.plotly_chart(fig_pais, use_container_width=True)
