@@ -188,3 +188,50 @@ fig_reg = px.bar(
 
 # (d) Exibe em full width abaixo dos dois primeiros gráficos
 st.plotly_chart(fig_reg, use_container_width=True)
+
+# ——— 8) Ranking Top 10 Cidades — Comparativo 2024 vs 2025 ———
+
+# 1) Normaliza nome das cidades
+df_2025['Cidade_proc'] = (
+    df_2025['Cidade']
+      .astype(str)
+      .str.strip()
+      .str.title()
+)
+df_2024['Cidade_proc'] = (
+    df_2024['Cidade']
+      .astype(str)
+      .str.strip()
+      .str.title()
+)
+
+# 2) Conta por cidade nos dois anos
+cnt25_city = df_2025['Cidade_proc'].value_counts()
+cnt24_city = df_2024['Cidade_proc'].value_counts()
+
+# 3) Top 10 de 2025
+top10_cities = cnt25_city.head(10).index.tolist()
+
+# 4) Monta lista de tuplas (cidade, qtd2025, delta%)
+ranking = []
+for city in top10_cities:
+    c25 = int(cnt25_city.get(city, 0))
+    c24 = int(cnt24_city.get(city, 0))
+    if c24 > 0:
+        delta = (c25 - c24) / c24 * 100
+        delta_str = f"{delta:+.1f}%"
+    else:
+        delta_str = "–"
+    ranking.append((city, c25, delta_str))
+
+# 5) Renderiza o ranking
+st.markdown("## Top 10 Cidades — Ranking das cidades com mais participantes em 2025")
+for i, (city, qtd, delta_str) in enumerate(ranking, start=1):
+    # cria três colunas: ícone de ranking, texto e delta
+    col1, col2, col3 = st.columns([0.5, 4, 1])
+    with col1:
+        st.markdown(f"**{i}**")
+    with col2:
+        st.markdown(f"**{city}**  \n{qtd} participantes")
+    with col3:
+        st.markdown(f"<span style='color:green'>{delta_str}</span> vs 2024", unsafe_allow_html=True)
