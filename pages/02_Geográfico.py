@@ -114,26 +114,22 @@ fig_states = px.bar(
     labels={'Inscrições':'Nº Inscrições'}
 )
 
-# 6) Participação Internacional — **exclui Brasil** —
+# filtra só não-Brasil
 df_int = df_2025[df_2025['País'].str.lower() != 'brasil'].copy()
-pct_int = df_int['País'].value_counts(normalize=True).mul(100)
+
+# calcula % sobre o total internacional
 df_int_pais = (
-    pct_int
-    .reset_index()
-    .rename(columns={'index':'País','País':'pct'})
-    .sort_values('pct', ascending=False)
+    df_int['País']
+      .value_counts(normalize=True)
+      .mul(100)
+      .rename_axis('País')
+      .reset_index(name='pct')
+      .sort_values('pct', ascending=False)
 )
 
-# agrupa tudo além dos top5 em "Outros"
-top5       = df_int_pais.head(5)
-others_pct = df_int_pais['pct'].iloc[5:].sum()
-df_int_plot = pd.concat([
-    top5,
-    pd.DataFrame([{'País':'Outros','pct':others_pct}])
-], ignore_index=True)
-
+# pie com todas as fatias
 fig_int = px.pie(
-    df_int_plot,
+    df_int_pais,
     names='País',
     values='pct',
     title='Participação Internacional (exclui Brasil)',
@@ -141,8 +137,6 @@ fig_int = px.pie(
 )
 fig_int.update_traces(textinfo='label+percent', hoverinfo='label+percent')
 
-# Exibe os dois gráficos lado a lado
 col1, col2 = st.columns(2)
 col1.plotly_chart(fig_states, use_container_width=True)
 col2.plotly_chart(fig_int,   use_container_width=True)
-
