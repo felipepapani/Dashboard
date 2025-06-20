@@ -169,6 +169,7 @@ fig = px.line(
 # Ajustar eixo X para o máximo de dias de 2025
 max_2025 = df_concat[df_concat['ano']=='2025']['dias_desde_inicio'].max()
 fig.update_xaxes(range=[0, max_2025])
+fig.update_xaxes(range=[0, total_2025])
 st.plotly_chart(fig, use_container_width=True)
 
 # Exibir tabela com os dados usados no gráfico
