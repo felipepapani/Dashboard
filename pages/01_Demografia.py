@@ -176,13 +176,28 @@ with col2:
 bins = [0, 18, 25, 35, 45, 55, 65, 200]
 labels = ['<18','18–25','26–35','36–45','46–55','56–65','65+']
 
+
+
+# 1) Função helper para calcular idade em anos
+def compute_idade(df, start_timestamp):
+    # converte strings para datetime, extrai só a parte date
+    births = pd.to_datetime(
+        df['Data de nascimento'], format='%d/%m/%Y', dayfirst=True, errors='coerce'
+    ).dt.date
+    start_date = start_timestamp.date()
+    # subtrai cada Python date e converte para dias
+    age_days = births.apply(lambda bd: (start_date - bd).days if pd.notnull(bd) else None)
+    # converte para anos e retorna inteiro
+    return (age_days / 365.25).fillna(0).astype(int)
+
+# 2) Substitua o bloco que fazia df['idade'] direto por algo como:
+for df, start in [(df_2024, start_2024), (df_2025, start_2025)]:
+    df['idade'] = compute_idade(df, start)
+    df['faixa'] = pd.cut(df['idade'], bins=bins, labels=labels, right=True)
+
 # converter nascimento e calcular idade em anos arredondado
 for df, start in [(df_2024, start_2024), (df_2025, start_2025)]:
-    df['Data de nascimento'] = pd.to_datetime(
-        df['Data de nascimento'], format='%d/%m/%Y', dayfirst=True, errors='coerce'
-    )
-    df['idade'] = ((start.date() - df['Data de nascimento'].dt.date)
-                   .dt.days / 365.25).fillna(0).astype(int)
+    df['idade'] = compute_idade(df, start)
     df['faixa'] = pd.cut(df['idade'], bins=bins, labels=labels, right=True)
 
 # agrega contagens por faixa e ano
