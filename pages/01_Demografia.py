@@ -228,41 +228,50 @@ fig_age = px.bar(
 
 st.plotly_chart(fig_age, use_container_width=True)
 
-# —– Evolução da Participação Feminina —–
-meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+# 1) prepara dados de 2025
 col_gen = 'Com qual gênero você se identifica?'
+meses_ord = ['Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-def monthly_pct_fem(df, ano_label):
-    # 1) garante datetime
-    df['data_insc'] = pd.to_datetime(df['Data Inscrição'], dayfirst=True, errors='coerce')
-    # 2) extrai abreviação do mês
-    df['mes'] = df['data_insc'].dt.strftime('%b')
-    # 3) máscara feminino
-    mask = df[col_gen].str.contains(r'feminino|mulher', case=False, na=False)
-    # 4) agrupa e reindexa para todos os meses
-    return (
-        df.assign(mask_fem=mask)
-          .groupby('mes')['mask_fem']
-          .mean()
-          .reindex(meses, fill_value=0)
-          .mul(100)
-          .reset_index(name='pct')
-          .assign(ano=ano_label)
-    )
+df25 = df_2025.copy()
+df25['data_insc'] = pd.to_datetime(df25['Data Inscrição'], dayfirst=True, errors='coerce')
+df25['mes'] = df25['data_insc'].dt.strftime('%b')
 
-monthly_2024 = monthly_pct_fem(df_2024, '2024')
-monthly_2025 = monthly_pct_fem(df_2025, '2025')
-monthly = pd.concat([monthly_2024, monthly_2025], ignore_index=True)
+# 2) filtra só masculino e feminino
+mask = df25[col_gen].str.contains(r'masculino|homem|feminino|mulher', case=False, na=False)
+df25 = df25[mask]
+df25['genero_cat'] = np.where(
+    df25[col_gen].str.contains(r'masculino|homem', case=False, na=False),
+    'Masculino',
+    'Feminino'
+)
 
-fig_fem = px.line(
+# 3) calcula % por mês
+grp = df25.groupby(['mes','genero_cat']).size().rename('count').reset_index()
+tot = df25.groupby('mes').size().rename('total').reset_index()
+monthly = grp.merge(tot, on='mes')
+monthly['pct'] = monthly['count'] / monthly['total'] * 100
+
+# 4) reindexa para garantir todos os meses e ambas as categorias
+idx = pd.MultiIndex.from_product([meses_ord, ['Masculino','Feminino']], names=['mes','genero_cat'])
+monthly = (
+    monthly
+    .set_index(['mes','genero_cat'])
+    .reindex(idx, fill_value=0)
+    .reset_index()
+)
+monthly['mes'] = pd.Categorical(monthly['mes'], categories=meses_ord, ordered=True)
+monthly = monthly.sort_values('mes')
+
+# 5) plota linha azul para Masculino, rosa para Feminino
+fig = px.line(
     monthly,
     x='mes',
     y='pct',
-    color='ano',
+    color='genero_cat',
     markers=True,
-    labels={'mes':'Mês', 'pct':'% Feminino', 'ano':'Ano'},
-    title='Evolução da Participação Feminina'
+    color_discrete_map={'Masculino':'blue','Feminino':'pink'},
+    labels={'mes':'Mês','pct':'% Inscrições','genero_cat':'Gênero'},
+    title='Evolução Mensal por Gênero em 2025 (Jun–Dez)'
 )
-fig_fem.update_yaxes(ticksuffix='%')
-st.plotly_chart(fig_fem, use_container_width=True)
-
+fig.update_yaxes(range=[0,100], ticksuffix='%')
+st.plotly_chart(fig, use_container_width=True)
