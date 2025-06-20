@@ -101,3 +101,71 @@ c4.metric(
     f"{delta_loyal:+.1f}% vs {pct_loyal_2024:.1f}%"
 )
 # =====================================
+# normaliza nomes de colunas
+col_gen = "Com qual gênero você se identifica?"
+
+# calcula proporção por gênero em cada ano
+dist_2024 = (
+    df_2024[col_gen]
+    .value_counts(normalize=True)
+    .rename_axis("genero")
+    .reset_index(name="proporcao")
+    .assign(ano="2024")
+)
+dist_2025 = (
+    df_2025[col_gen]
+    .value_counts(normalize=True)
+    .rename_axis("genero")
+    .reset_index(name="proporcao")
+    .assign(ano="2025")
+)
+
+dist = pd.concat([dist_2024, dist_2025], ignore_index=True)
+
+fig_gen = px.bar(
+    dist,
+    x="genero",
+    y="proporcao",
+    color="ano",
+    barmode="group",
+    labels={
+        "genero": "Gênero",
+        "proporcao": "Proporção",
+        "ano": "Ano"
+    },
+    title="Distribuição por Gênero — Comparativo 2024 vs 2025"
+)
+fig_gen.update_yaxes(tickformat=".0%")
+st.plotly_chart(fig_gen, use_container_width=True)
+
+# categoriza número de edições anteriores
+col_hist = "Participou de algum RNP anterior? Se sim, quais as edições?"
+def categorize(hist_str):
+    if pd.isna(hist_str) or hist_str.strip()=="":
+        return "Primeira vez"
+    n = len([s for s in hist_str.split(",") if s.strip()])
+    if n == 1:
+        return "1 edição anterior"
+    if 2 <= n <= 3:
+        return "2–3 edições"
+    return "4+ edições"
+
+df_2025["hist_cat"] = df_2025[col_hist].apply(categorize)
+
+hist = (
+    df_2025["hist_cat"]
+    .value_counts(normalize=True)
+    .rename_axis("categoria")
+    .reset_index(name="pct")
+)
+
+fig_hist = px.pie(
+    hist,
+    names="categoria",
+    values="pct",
+    title="Histórico de Participação — Experiência anterior",
+    labels={"categoria": "", "pct": "Percentual"}
+)
+# mostra % e label dentro do gráfico
+fig_hist.update_traces(textposition="inside", textinfo="label+percent")
+st.plotly_chart(fig_hist, use_container_width=True)
