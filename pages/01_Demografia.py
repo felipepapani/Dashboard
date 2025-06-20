@@ -230,24 +230,25 @@ fig_age = px.bar(
 st.plotly_chart(fig_age, use_container_width=True)
 
 # 1) prepara dados
-import plotly.graph_objects as go
-import numpy as np
-
 # 1) configurações iniciais
 col_gen   = 'Com qual gênero você se identifica?'
-meses_ord = ['Mai','Jun']   # Maio até mês atual (Junho)
+# meses de Maio (5) até mês atual (6)
+meses_ord = ['Mai','Jun']
+month_map = {
+    1:'Jan',2:'Fev',3:'Mar',4:'Abr',5:'Mai',6:'Jun',
+    7:'Jul',8:'Ago',9:'Set',10:'Out',11:'Nov',12:'Dez'
+}
 
 # 2) prepara df25
 df25 = df_2025.copy()
-df25['data_insc'] = pd.to_datetime(
-    df25['Data Inscrição'],
-    dayfirst=True,
-    errors='coerce'
-)
-# extrai abreviação do mês em pt
-df25['mes'] = df25['data_insc'].dt.month_name(locale='pt').str[:3]
+df25['data_insc'] = pd.to_datetime(df25['Data Inscrição'], dayfirst=True, errors='coerce')
+df25['mes_num']  = df25['data_insc'].dt.month
+df25['mes']      = df25['mes_num'].map(month_map)
 
-# 3) categoriza apenas Masculino / Feminino
+# 3) filtra Maio e Junho só
+df25 = df25[df25['mes_num'].isin([5,6])]
+
+# 4) categoriza apenas Masculino / Feminino
 df25['genero_cat'] = np.where(
     df25[col_gen].str.contains(r'feminino|mulher', case=False, na=False),
     'Feminino',
@@ -258,7 +259,7 @@ df25['genero_cat'] = np.where(
     )
 )
 
-# 4) conta só Masculino/Feminino e total geral por mês
+# 5) conta só Masculino/Feminino e total geral por mês
 grp = (
     df25[df25['genero_cat'].notnull()]
     .groupby(['mes','genero_cat'])
@@ -276,7 +277,7 @@ tot = (
 monthly = grp.merge(tot, on='mes')
 monthly['pct'] = monthly['count'] / monthly['total'] * 100
 
-# 5) garante todas combinações de Maio–Jun e gêneros
+# 6) garante todas combinações de Maio–Jun e gêneros
 idx = pd.MultiIndex.from_product(
     [meses_ord, ['Masculino','Feminino']],
     names=['mes','genero_cat']
@@ -287,14 +288,17 @@ monthly = (
     .reindex(idx, fill_value=0)
     .reset_index()
 )
+
+# 7) ordena meses
 monthly['mes'] = pd.Categorical(monthly['mes'], categories=meses_ord, ordered=True)
 monthly = monthly.sort_values('mes')
 
-# 6) monta gráfico com dois eixos Y
+# 8) monta gráfico com dois eixos Y
 fem  = monthly[monthly['genero_cat']=='Feminino']
 masc = monthly[monthly['genero_cat']=='Masculino']
 
 fig = go.Figure()
+
 # Feminino – eixo esquerdo (0→100)
 fig.add_trace(go.Scatter(
     x=fem['mes'], y=fem['pct'],
@@ -324,7 +328,7 @@ fig.update_layout(
     ),
     yaxis2=dict(
         title='% Masculino',
-        range=[100,0],          # mesmo intervalo, mas invertido
+        range=[100,0],         # mesmo intervalo, mas invertido
         ticksuffix='%',
         overlaying='y',
         side='right'
