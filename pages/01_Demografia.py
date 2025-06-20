@@ -273,26 +273,55 @@ monthly['pct_plot'] = np.where(
 monthly['mes'] = pd.Categorical(monthly['mes'], categories=meses_ord, ordered=True)
 monthly = monthly.sort_values('mes')
 
-# 7) plota
-fig = px.line(
-    monthly,
-    x='mes',
-    y='pct_plot',
-    color='genero_cat',
-    markers=True,
-    color_discrete_map={'Masculino':'blue','Feminino':'pink'},
-    labels={
-        'mes':'Mês',
-        'pct_plot':'% Inscrições',
-        'genero_cat':'Gênero'
-    },
-    title='Evolução Mensal por Gênero em 2025 (Jun–Dez)'
-)
-fig.update_yaxes(range=[0,100], ticksuffix='%')
-fig.update_traces(
+import plotly.graph_objects as go
+
+# --- supondo que você já tenha o DataFrame `monthly` com colunas ['mes','genero_cat','pct'] ---
+# e que esteja ordenado de Jun a Dez
+
+# 1) Filtra séries
+fem = monthly[monthly['genero_cat']=='Feminino']
+masc = monthly[monthly['genero_cat']=='Masculino']
+
+# 2) Cria figura
+fig = go.Figure()
+
+# Feminino no eixo y (esquerdo)
+fig.add_trace(go.Scatter(
+    x=fem['mes'], y=fem['pct'],
     mode='lines+markers',
-    marker=dict(size=8),
-    hovertemplate='%{fullData.name}: %{y:.1f}%<extra></extra>'
+    name='Feminino',
+    line=dict(color='pink'),
+    marker=dict(size=6)
+))
+
+# Masculino no eixo y2 (direito, invertido)
+fig.add_trace(go.Scatter(
+    x=masc['mes'], y=masc['pct'],
+    mode='lines+markers',
+    name='Masculino',
+    line=dict(color='blue'),
+    marker=dict(size=6),
+    yaxis='y2'
+))
+
+# 3) Layout com eixos duplos
+fig.update_layout(
+    title='Evolução Mensal por Gênero em 2025 (Jun–Dez)',
+    xaxis=dict(title='Mês'),
+    yaxis=dict(
+        title='% Feminino',
+        range=[0,100],
+        ticksuffix='%'
+    ),
+    yaxis2=dict(
+        title='% Masculino',
+        range=[0,100],
+        autorange='reversed',   # inverte de 0 (topo) → 100 (fundo)
+        overlaying='y',
+        side='right',
+        ticksuffix='%'
+    ),
+    hovermode='x unified'
 )
-fig.update_layout(hovermode='x unified')
+
 st.plotly_chart(fig, use_container_width=True)
