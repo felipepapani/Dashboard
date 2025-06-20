@@ -132,7 +132,7 @@ fig = px.line(
     labels={
         'dias_desde_inicio': 'Dias desde Início',
         'inscricoes_acumuladas': 'Total de Inscrições',
-        'ano': 'Ano'
+        'ano': 'Ano','Confirmação email':"Status do E-mail"
     },
     title="Comparativo de Inscrições Acumuladas"
 )
