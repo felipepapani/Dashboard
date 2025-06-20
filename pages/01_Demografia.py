@@ -136,7 +136,7 @@ fig_gen = px.bar(
     title="Distribuição por Gênero — Comparativo 2024 vs 2025"
 )
 fig_gen.update_yaxes(tickformat=".0%")
-st.plotly_chart(fig_gen, use_container_width=True)
+
 
 # categoriza número de edições anteriores
 col_hist = "Participou de algum RNP anterior? Se sim, quais as edições?"
@@ -168,4 +168,8 @@ fig_hist = px.pie(
 )
 # mostra % e label dentro do gráfico
 fig_hist.update_traces(textposition="inside", textinfo="label+percent")
-st.plotly_chart(fig_hist, use_container_width=True)
+col1,col2= st.columns(2)
+with col1:
+    st.plotly_chart(fig_gen, use_container_width=True)
+with col2:
+    st.plotly_chart(fig_hist, use_container_width=True)
