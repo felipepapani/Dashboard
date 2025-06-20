@@ -139,6 +139,7 @@ fig_bar = px.bar(
     y='inscricoes',
     color='ano',
     barmode='group',
+    color_discrete_map={'2024': 'blue', '2025': 'red'},
     labels={
         'month_index': 'Mês relativo ao início',
         'inscricoes': 'Inscrições',
@@ -159,6 +160,7 @@ fig = px.line(
     x='dias_desde_inicio',
     y='inscricoes_acumuladas',
     color='ano',
+    color_discrete_map={'2024': 'blue', '2025': 'red'},
     labels={
         'dias_desde_inicio': 'Dias desde Início',
         'inscricoes_acumuladas': 'Total de Inscrições',
