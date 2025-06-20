@@ -39,20 +39,15 @@ total_2024 = len(df_2024)
 pct_total = (total_2025 - total_2024) / total_2024 * 100 if total_2024 else None
 
 # E-mails Confirmados (Status do E-mail contendo 'confirm')
-confirmed_2025 = df_2025["Status do E-mail"] \
-    .isin(["Recebido"]) \
-    .sum()
-
-
-confirmed_2024 = df_2024['Status do E-mail']\
-    .isin(["Recebido"]) \
-    .sum()
+confirmed_2025 = df_2025['Status do E-mail'].str.contains('confirm', case=False, na=False).sum()
+confirmed_2024 = df_2024['Status do E-mail'].str.contains('confirm', case=False, na=False).sum()
 pct_confirmed = (confirmed_2025 - confirmed_2024) / confirmed_2024 * 100 if confirmed_2024 else None
 
 # Taxa de Confirmação
 tax_2025 = confirmed_2025 / total_2025 * 100 if total_2025 else None
 tax_2024 = confirmed_2024 / total_2024 * 100 if total_2024 else None
-pct_tax = tax_2025 - tax_2024 if tax_2024 is not None else None
+# delta relativo da taxa de confirmação (em %)
+pct_tax = ((tax_2025 - tax_2024) / tax_2024 * 100) if (tax_2024 and tax_2025 is not None) else None
 
 # Inscrições por Dia
 # Assumindo coluna Data Inscrição convertida
@@ -67,7 +62,6 @@ pct_avg = (avg_day_2025 - avg_day_2024) / avg_day_2024 * 100 if avg_day_2024 els
 # 4) Exibição de métricas em cards
 col1, col2, col3, col4 = st.columns(4)
 
-
 # Formatações de delta para evitar erros se None
 delta_total = f"{pct_total:.1f}%" if pct_total is not None else "—"
 delta_confirmed = f"{pct_confirmed:.1f}%" if pct_confirmed is not None else "—"
@@ -81,14 +75,13 @@ col1.metric(
 )
 col2.metric(
     "E-mails Confirmados",
-    f"{confirmed_2025:,}",         # quantidade no topo
-    f"{tax_2025:.1f}%"             # porcentagem de confirmação abaixo
+    f"{confirmed_2025:,}",         # quantidade
+    f"{tax_2025:.1f}%"           # porcentagem de confirmação
 )
-
 col3.metric(
     "Taxa de Confirmação",
-    f"{tax_2025:.1f}%",            # taxa em %
-    f"{pct_tax:.1f}%"              # variação percentual em relação a 2024
+    f"{tax_2025:.1f}%",           # valor percentual de taxa
+    f"{pct_tax:.1f}%"             # variação percentual em relação a 2024
 )
 col4.metric(
     "Inscrições por Dia",
@@ -144,3 +137,7 @@ fig = px.line(
     title="Comparativo de Inscrições Acumuladas"
 )
 st.plotly_chart(fig, use_container_width=True)
+
+# Exibir tabela com os dados usados no gráfico
+st.subheader("Tabela de Inscrições Acumuladas")
+st.dataframe(df_concat)
