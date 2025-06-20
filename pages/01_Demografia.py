@@ -173,96 +173,85 @@ with col1:
     st.plotly_chart(fig_gen, use_container_width=True)
 with col2:
     st.plotly_chart(fig_hist, use_container_width=True)
-bins = [0, 18, 25, 35, 45, 55, 65, 200]
-labels = ['<18','18–25','26–35','36–45','46–55','56–65','65+']
 
 
+# —– Distribuição por Faixa Etária —–
+bins  = [0, 18, 25, 35, 45, 55, 65, 200]
+labels = ['<18', '18–25', '26–35', '36–45', '46–55', '56–65', '65+']
 
-# 1) Função helper para calcular idade em anos
-def compute_idade(df, start_timestamp):
-    # converte strings para datetime, extrai só a parte date
-    births = pd.to_datetime(
-        df['Data de nascimento'], format='%d/%m/%Y', dayfirst=True, errors='coerce'
-    ).dt.date
-    start_date = start_timestamp.date()
-    # subtrai cada Python date e converte para dias
-    age_days = births.apply(lambda bd: (start_date - bd).days if pd.notnull(bd) else None)
-    # converte para anos e retorna inteiro
-    return (age_days / 365.25).fillna(0).astype(int)
-
-# 2) Substitua o bloco que fazia df['idade'] direto por algo como:
+# 1) Gera coluna 'idade' e depois 'faixa'
 for df, start in [(df_2024, start_2024), (df_2025, start_2025)]:
-    df['idade'] = compute_idade(df, start)
+    df['idade'] = compute_idade(df, start)           # sua função helper
     df['faixa'] = pd.cut(df['idade'], bins=bins, labels=labels, right=True)
 
-# converter nascimento e calcular idade em anos arredondado
-for df, start in [(df_2024, start_2024), (df_2025, start_2025)]:
-    df['idade'] = compute_idade(df, start)
-    df['faixa'] = pd.cut(df['idade'], bins=bins, labels=labels, right=True)
+# 2) Conta por faixa e ano
+def build_dist(df, ano_label):
+    return (
+        df['faixa']
+        .value_counts()                             # conta cada categoria
+        .reindex(labels, fill_value=0)              # garante todas as categorias
+        .to_frame('inscricoes')                     # transforma em df com coluna 'inscricoes'
+        .reset_index()                              # traz as labels para coluna 'index'
+        .rename(columns={'index':'faixa'})          # renomeia para 'faixa'
+        .assign(ano=ano_label)                      # adiciona coluna de ano
+    )
 
-# agrega contagens por faixa e ano
-dist_2024 = (df_2024['faixa']
-             .value_counts()
-             .reindex(labels, fill_value=0)
-             .reset_index(name='inscrições')
-             .assign(ano='2024'))
-dist_2025 = (df_2025['faixa']
-             .value_counts()
-             .reindex(labels, fill_value=0)
-             .reset_index(name='inscrições')
-             .assign(ano='2025'))
-dist = pd.concat([dist_2024, dist_2025], ignore_index=True)
+dist_2024 = build_dist(df_2024, '2024')
+dist_2025 = build_dist(df_2025, '2025')
+dist_age  = pd.concat([dist_2024, dist_2025], ignore_index=True)
 
+# 3) Gráfico de barras
 fig_age = px.bar(
-    dist,
-    x='index',
-    y='inscrições',
+    dist_age,
+    x='faixa',
+    y='inscricoes',
     color='ano',
     barmode='group',
-    labels={'index':'Faixa Etária','inscrições':'Nº Inscrições','ano':'Ano'},
-    title='Distribuição por Faixa Etária — Comparativo 2024 vs 2025',
-    color_discrete_map={'2024':'#888888','2025':'#0066CC'}
+    labels={
+        'faixa': 'Faixa Etária',
+        'inscricoes': 'Nº Inscrições',
+        'ano': 'Ano'
+    },
+    title='Distribuição por Faixa Etária — Comparativo 2024 vs 2025'
 )
+
 st.plotly_chart(fig_age, use_container_width=True)
 
-
-# 2) Evolução da Participação Feminina
+# —– Evolução da Participação Feminina —–
+meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 col_gen = 'Com qual gênero você se identifica?'
 
-for df in (df_2024, df_2025):
-    df['month'] = df['Data Inscrição'].dt.month_name(locale='pt').str[:3]
+def monthly_pct_fem(df, ano_label):
+    # 1) garante datetime
+    df['data_insc'] = pd.to_datetime(df['Data Inscrição'], dayfirst=True, errors='coerce')
+    # 2) extrai abreviação do mês
+    df['mes'] = df['data_insc'].dt.strftime('%b')
+    # 3) máscara feminino
+    mask = df[col_gen].str.contains(r'feminino|mulher', case=False, na=False)
+    # 4) agrupa e reindexa para todos os meses
+    return (
+        df.assign(mask_fem=mask)
+          .groupby('mes')['mask_fem']
+          .mean()
+          .reindex(meses, fill_value=0)
+          .mul(100)
+          .reset_index(name='pct')
+          .assign(ano=ano_label)
+    )
 
-# calcula pct feminino por mês e ano
-def pct_fem(df, ano):
-    tmp = (df[col_gen]
-           .str.contains(r'feminino|mulher', case=False, na=False)
-           .rename('mask'))
-    summary = (df.assign(mask=tmp)
-               .groupby('month')['mask']
-               .mean()
-               .mul(100)
-               .reset_index()
-               .assign(ano=ano))
-    return summary
-
-monthly_2024 = pct_fem(df_2024, '2024')
-monthly_2025 = pct_fem(df_2025, '2025')
+monthly_2024 = monthly_pct_fem(df_2024, '2024')
+monthly_2025 = monthly_pct_fem(df_2025, '2025')
 monthly = pd.concat([monthly_2024, monthly_2025], ignore_index=True)
-
-# garante ordem Jan–Dez
-meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-monthly['month'] = pd.Categorical(monthly['month'], categories=meses, ordered=True)
-monthly = monthly.sort_values('month')
 
 fig_fem = px.line(
     monthly,
-    x='month',
-    y='mask',
+    x='mes',
+    y='pct',
     color='ano',
     markers=True,
-    labels={'month':'Mês','mask':'% Feminino','ano':'Ano'},
-    title='Evolução da Participação Feminina',
-    color_discrete_map={'2024':'#888888','2025':'#CC0033'}
+    labels={'mes':'Mês', 'pct':'% Feminino', 'ano':'Ano'},
+    title='Evolução da Participação Feminina'
 )
 fig_fem.update_yaxes(ticksuffix='%')
 st.plotly_chart(fig_fem, use_container_width=True)
+
