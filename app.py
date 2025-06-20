@@ -60,7 +60,7 @@ avg_day_2024 = total_2024 / days_2024 if days_2024 else None
 pct_avg = (avg_day_2025 - avg_day_2024) / avg_day_2024 * 100 if avg_day_2024 else None
 
 # 4) Exibição de métricas em cards
-col1, col2 = st.columns(4)
+col1, col2 = st.columns(2)
 
 # Formatações de delta para evitar erros se None
 delta_total = f"{pct_total:.1f}%" if pct_total is not None else "—"
