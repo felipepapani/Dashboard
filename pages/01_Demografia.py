@@ -173,3 +173,81 @@ with col1:
     st.plotly_chart(fig_gen, use_container_width=True)
 with col2:
     st.plotly_chart(fig_hist, use_container_width=True)
+bins = [0, 18, 25, 35, 45, 55, 65, 200]
+labels = ['<18','18–25','26–35','36–45','46–55','56–65','65+']
+
+# converter nascimento e calcular idade em anos arredondado
+for df, start in [(df_2024, start_2024), (df_2025, start_2025)]:
+    df['Data de nascimento'] = pd.to_datetime(
+        df['Data de nascimento'], format='%d/%m/%Y', dayfirst=True, errors='coerce'
+    )
+    df['idade'] = ((start.date() - df['Data de nascimento'].dt.date)
+                   .dt.days / 365.25).fillna(0).astype(int)
+    df['faixa'] = pd.cut(df['idade'], bins=bins, labels=labels, right=True)
+
+# agrega contagens por faixa e ano
+dist_2024 = (df_2024['faixa']
+             .value_counts()
+             .reindex(labels, fill_value=0)
+             .reset_index(name='inscrições')
+             .assign(ano='2024'))
+dist_2025 = (df_2025['faixa']
+             .value_counts()
+             .reindex(labels, fill_value=0)
+             .reset_index(name='inscrições')
+             .assign(ano='2025'))
+dist = pd.concat([dist_2024, dist_2025], ignore_index=True)
+
+fig_age = px.bar(
+    dist,
+    x='index',
+    y='inscrições',
+    color='ano',
+    barmode='group',
+    labels={'index':'Faixa Etária','inscrições':'Nº Inscrições','ano':'Ano'},
+    title='Distribuição por Faixa Etária — Comparativo 2024 vs 2025',
+    color_discrete_map={'2024':'#888888','2025':'#0066CC'}
+)
+st.plotly_chart(fig_age, use_container_width=True)
+
+
+# 2) Evolução da Participação Feminina
+col_gen = 'Com qual gênero você se identifica?'
+
+for df in (df_2024, df_2025):
+    df['month'] = df['Data Inscrição'].dt.month_name(locale='pt').str[:3]
+
+# calcula pct feminino por mês e ano
+def pct_fem(df, ano):
+    tmp = (df[col_gen]
+           .str.contains(r'feminino|mulher', case=False, na=False)
+           .rename('mask'))
+    summary = (df.assign(mask=tmp)
+               .groupby('month')['mask']
+               .mean()
+               .mul(100)
+               .reset_index()
+               .assign(ano=ano))
+    return summary
+
+monthly_2024 = pct_fem(df_2024, '2024')
+monthly_2025 = pct_fem(df_2025, '2025')
+monthly = pd.concat([monthly_2024, monthly_2025], ignore_index=True)
+
+# garante ordem Jan–Dez
+meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+monthly['month'] = pd.Categorical(monthly['month'], categories=meses, ordered=True)
+monthly = monthly.sort_values('month')
+
+fig_fem = px.line(
+    monthly,
+    x='month',
+    y='mask',
+    color='ano',
+    markers=True,
+    labels={'month':'Mês','mask':'% Feminino','ano':'Ano'},
+    title='Evolução da Participação Feminina',
+    color_discrete_map={'2024':'#888888','2025':'#CC0033'}
+)
+fig_fem.update_yaxes(ticksuffix='%')
+st.plotly_chart(fig_fem, use_container_width=True)
