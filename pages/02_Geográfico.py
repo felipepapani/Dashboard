@@ -34,7 +34,7 @@ df_2024_est = df_2024[
 start_2024 = pd.Timestamp('2024-07-04 17:30:00')
 start_2025 = pd.Timestamp('2025-06-12 08:00:00')
 
-e# 1) Estados Representados
+# 1) Estados Representados
 estados_2025 = df_2025['Estado'].nunique()
 estados_2024 = df_2024_est['Estado'].nunique()
 delta_estados = estados_2025 - estados_2024
