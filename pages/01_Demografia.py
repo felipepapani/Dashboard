@@ -230,69 +230,81 @@ fig_age = px.bar(
 st.plotly_chart(fig_age, use_container_width=True)
 
 # 1) prepara dados
-col_gen    = 'Com qual gênero você se identifica?'
-meses_ord  = ['Jun','Jul','Ago','Set','Out','Nov','Dez']
-df25       = df_2025.copy()
-df25['data_insc'] = pd.to_datetime(df25['Data Inscrição'], dayfirst=True, errors='coerce')
-df25['mes']       = df25['data_insc'].dt.strftime('%b')
+import plotly.graph_objects as go
+import numpy as np
 
-# 2) filtra só Masculino e Feminino
-mask = df25[col_gen].str.contains(r'masculino|homem|feminino|mulher', case=False, na=False)
-df25 = df25[mask]
+# 1) configurações iniciais
+col_gen   = 'Com qual gênero você se identifica?'
+meses_ord = ['Mai','Jun']   # Maio até mês atual (Junho)
+
+# 2) prepara df25
+df25 = df_2025.copy()
+df25['data_insc'] = pd.to_datetime(
+    df25['Data Inscrição'],
+    dayfirst=True,
+    errors='coerce'
+)
+# extrai abreviação do mês em pt
+df25['mes'] = df25['data_insc'].dt.month_name(locale='pt').str[:3]
+
+# 3) categoriza apenas Masculino / Feminino
 df25['genero_cat'] = np.where(
-    df25[col_gen].str.contains(r'masculino|homem', case=False, na=False),
-    'Masculino',
-    'Feminino'
+    df25[col_gen].str.contains(r'feminino|mulher', case=False, na=False),
+    'Feminino',
+    np.where(
+        df25[col_gen].str.contains(r'masculino|homem', case=False, na=False),
+        'Masculino',
+        None
+    )
 )
 
-# 3) conta e total por mês
-grp = df25.groupby(['mes','genero_cat']).size().rename('count').reset_index()
-tot = df25.groupby('mes').size().rename('total').reset_index()
+# 4) conta só Masculino/Feminino e total geral por mês
+grp = (
+    df25[df25['genero_cat'].notnull()]
+    .groupby(['mes','genero_cat'])
+    .size()
+    .rename('count')
+    .reset_index()
+)
+tot = (
+    df25
+    .groupby('mes')
+    .size()
+    .rename('total')
+    .reset_index()
+)
 monthly = grp.merge(tot, on='mes')
+monthly['pct'] = monthly['count'] / monthly['total'] * 100
 
-# 4) reindex para garantir todas as combinações
-idx = pd.MultiIndex.from_product([meses_ord, ['Masculino','Feminino']],
-                                 names=['mes','genero_cat'])
+# 5) garante todas combinações de Maio–Jun e gêneros
+idx = pd.MultiIndex.from_product(
+    [meses_ord, ['Masculino','Feminino']],
+    names=['mes','genero_cat']
+)
 monthly = (
     monthly
     .set_index(['mes','genero_cat'])
     .reindex(idx, fill_value=0)
     .reset_index()
 )
-
-# 5) pct real e pct_plot invertido só para Masculino
-monthly['pct'] = monthly['count'] / monthly['total'].replace(0, np.nan) * 100
-monthly['pct'] = monthly['pct'].fillna(0)
-monthly['pct_plot'] = np.where(
-    monthly['genero_cat']=='Masculino',
-    100 - monthly['pct'],
-    monthly['pct']
-)
-
-# 6) ordena meses
 monthly['mes'] = pd.Categorical(monthly['mes'], categories=meses_ord, ordered=True)
 monthly = monthly.sort_values('mes')
 
-import plotly.graph_objects as go
-
-# --- supondo que você já tenha o DataFrame `monthly` com ['mes','genero_cat','pct'] ---
-
-# separa as séries
+# 6) monta gráfico com dois eixos Y
 fem  = monthly[monthly['genero_cat']=='Feminino']
 masc = monthly[monthly['genero_cat']=='Masculino']
 
 fig = go.Figure()
-
-# Feminino no eixo y (esquerdo), 0 embaixo → 100 em cima
+# Feminino – eixo esquerdo (0→100)
 fig.add_trace(go.Scatter(
     x=fem['mes'], y=fem['pct'],
     mode='lines+markers',
     name='Feminino',
     line=dict(color='pink'),
-    marker=dict(size=6)
+    marker=dict(size=6),
+    yaxis='y'
 ))
-
-# Masculino no eixo y2 (direito), mas range fixo 0→100 invertido
+# Masculino – eixo direito (100→0 invertido)
 fig.add_trace(go.Scatter(
     x=masc['mes'], y=masc['pct'],
     mode='lines+markers',
@@ -303,7 +315,7 @@ fig.add_trace(go.Scatter(
 ))
 
 fig.update_layout(
-    title='Evolução Mensal por Gênero em 2025 (Jun–Dez)',
+    title='Evolução Mensal por Gênero em 2025 (Mai–Jun)',
     xaxis=dict(title='Mês'),
     yaxis=dict(
         title='% Feminino',
@@ -312,7 +324,7 @@ fig.update_layout(
     ),
     yaxis2=dict(
         title='% Masculino',
-        range=[100,0],        # mesmo intervalo, mas invertido
+        range=[100,0],          # mesmo intervalo, mas invertido
         ticksuffix='%',
         overlaying='y',
         side='right'
