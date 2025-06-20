@@ -225,13 +225,24 @@ for city in top10_cities:
     ranking.append((city, c25, delta_str))
 
 # 5) Renderiza o ranking
-st.markdown("## Top 10 Cidades — Ranking das cidades com mais participantes em 2025")
-for i, (city, qtd, delta_str) in enumerate(ranking, start=1):
-    # cria três colunas: ícone de ranking, texto e delta
-    col1, col2, col3 = st.columns([0.5, 4, 1])
-    with col1:
-        st.markdown(f"**{i}**")
-    with col2:
-        st.markdown(f"**{city}**  \n{qtd} participantes")
-    with col3:
-        st.markdown(f"<span style='color:green'>{delta_str}</span> vs 2024", unsafe_allow_html=True)
+# 5) Renderiza o ranking com cor condicional na %  
+st.markdown("## Top 10 Cidades — Ranking das cidades com mais participantes em 2025")  
+for i, (city, qtd, delta_str) in enumerate(ranking, start=1):  
+    col1, col2, col3 = st.columns([0.5, 4, 1])  
+    with col1:  
+        st.markdown(f"**{i}**")  
+    with col2:  
+        st.markdown(f"**{city}**  \n{qtd} participantes")  
+    with col3:  
+        # escolhe a cor conforme sinal da variação  
+        if delta_str.startswith('+'):  
+            color = 'green'  
+        elif delta_str.startswith('-'):  
+            color = 'red'  
+        else:  
+            color = 'black'  
+        st.markdown(  
+            f"<span style='color:{color}'>{delta_str}</span> vs 2024",  
+            unsafe_allow_html=True  
+        )  
+
