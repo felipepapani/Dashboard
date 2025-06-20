@@ -22,14 +22,19 @@ valid_states = [
 ]
 
 # filtra só as linhas cujo 'Estado' é uma dessas siglas
-df_2024_est = df_2024[
+df_2024['estado_proc'] = (
     df_2024['Estado']
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .isin(valid_states)
-].copy()
-# ========== Novas métricas ==========
+      .dropna()                            # elimina NaN
+      .astype(str)                         # garante string
+      .str.strip()                         # tira espaços
+      .str.upper()                         # deixa tudo em maiúsculo
+)
+
+# 2) filtra apenas siglas válidas
+df_2024_est = df_2024[df_2024['estado_proc'].isin(valid_states)].copy()
+
+# 3) conta as únicas **no** campo processado
+estados_2024 = df_2024_est['estado_proc'].nunique()
 # datas de início fixas (já definidas antes)
 start_2024 = pd.Timestamp('2024-07-04 17:30:00')
 start_2025 = pd.Timestamp('2025-06-12 08:00:00')
