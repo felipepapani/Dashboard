@@ -252,6 +252,11 @@ tot = df25.groupby('mes').size().rename('total').reset_index()
 monthly = grp.merge(tot, on='mes')
 monthly['pct'] = monthly['count'] / monthly['total'] * 100
 
+
+monthly['pct_plot'] = monthly.apply(
+    lambda row: 100 - row['pct'] if row['genero_cat']=='Masculino' else row['pct'],
+    axis=1
+)
 # 4) reindexa para garantir todos os meses e ambas as categorias
 idx = pd.MultiIndex.from_product([meses_ord, ['Masculino','Feminino']], names=['mes','genero_cat'])
 monthly = (
@@ -263,16 +268,21 @@ monthly = (
 monthly['mes'] = pd.Categorical(monthly['mes'], categories=meses_ord, ordered=True)
 monthly = monthly.sort_values('mes')
 
-# 5) plota linha azul para Masculino, rosa para Feminino
 fig = px.line(
     monthly,
     x='mes',
-    y='pct',
+    y='pct_plot',
     color='genero_cat',
     markers=True,
     color_discrete_map={'Masculino':'blue','Feminino':'pink'},
-    labels={'mes':'Mês','pct':'% Inscrições','genero_cat':'Gênero'},
+    labels={
+        'mes':'Mês',
+        'pct_plot':'% Inscrições',
+        'genero_cat':'Gênero'
+    },
     title='Evolução Mensal por Gênero em 2025 (Jun–Dez)'
 )
+# fixa eixo de 0 a 100
 fig.update_yaxes(range=[0,100], ticksuffix='%')
+
 st.plotly_chart(fig, use_container_width=True)
