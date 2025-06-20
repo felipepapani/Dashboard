@@ -60,7 +60,7 @@ avg_day_2024 = total_2024 / days_2024 if days_2024 else None
 pct_avg = (avg_day_2025 - avg_day_2024) / avg_day_2024 * 100 if avg_day_2024 else None
 
 # 4) Exibição de métricas em cards
-col1, col2 = st.columns(2)
+col1, col2, col3, col4 = st.columns(4)
 
 # Formatações de delta para evitar erros se None
 delta_total = f"{pct_total:.1f}%" if pct_total is not None else "—"
@@ -74,6 +74,16 @@ col1.metric(
     delta_total
 )
 col2.metric(
+    "E-mails Confirmados",
+    f"{confirmed_2025:,}",         # quantidade
+    f"{tax_2025:.1f}%"           # porcentagem de confirmação
+)
+col3.metric(
+    "Taxa de Confirmação",
+    f"{tax_2025:.1f}%" if tax_2025 is not None else "—",
+    delta_tax
+)
+col4.metric(
     "Inscrições por Dia",
     f"{avg_day_2025:.1f}" if avg_day_2025 is not None else "—",
     delta_avg
@@ -107,6 +117,36 @@ def prepare_cumulative(df, label):
     df_agg['dias_desde_inicio'] = df_agg['dias_desde_inicio'].astype(int)
     df_agg['ano'] = label
     return df_agg
+
+# Geração do gráfico de barras por mês relativo
+# Calcular mês relativo para cada inscrição
+for df, start_date, label in [(df_2024, start_2024, '2024'), (df_2025, start_2025, '2025')]:
+    df['Data Inscrição'] = pd.to_datetime(df['Data Inscrição'], dayfirst=True, errors='coerce')
+    df['month_index'] = (
+        (df['Data Inscrição'].dt.year - start_date.year) * 12 +
+        (df['Data Inscrição'].dt.month - start_date.month) + 1
+    )
+    df['ano'] = label
+
+# Agrupar por mês relativo e ano
+monthly_agg = pd.concat([df_2024, df_2025])
+monthly_agg = monthly_agg.groupby(['ano', 'month_index']).size().reset_index(name='inscricoes')
+
+# Plot de barras
+fig_bar = px.bar(
+    monthly_agg,
+    x='month_index',
+    y='inscricoes',
+    color='ano',
+    barmode='group',
+    labels={
+        'month_index': 'Mês relativo ao início',
+        'inscricoes': 'Inscrições',
+        'ano': 'Ano'
+    },
+    title='Inscrições por Mês Relativo ao Início'
+)
+st.plotly_chart(fig_bar, use_container_width=True)
 
 # Geração do gráfico
 cum2025 = prepare_cumulative(df_2025, '2025')
