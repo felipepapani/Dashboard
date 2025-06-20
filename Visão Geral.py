@@ -1,30 +1,13 @@
 import streamlit as st
 # 1) Configuração de página
 st.set_page_config(
-    page_title="Dashboard de Inscrições - RNP 2024",
+    page_title="Dashboard de Inscrições - RNP 2025",
     layout="wide",
 )
 
 import pandas as pd
 import plotly.express as px
 from utils.data_loader import load_data
-
-# —————— Autenticação ——————
-USERS = {"admin": st.secrets.get("admin_password", "minha_senha_segura")}  
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if not st.session_state.logged_in:
-    st.title("🔒 Login")
-    user = st.text_input("Usuário", key="login_user")
-    pwd = st.text_input("Senha", type="password", key="login_pwd")
-    if st.button("Entrar"):
-        if USERS.get(user) == pwd:
-            st.session_state.logged_in = True
-            st.experimental_rerun()
-        else:
-            st.error("Usuário ou senha incorretos")
-    st.stop()
-# —————— Fim autenticação ——————
 
 # 2) Carregamento de dados
 # API 2025
