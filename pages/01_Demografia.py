@@ -8,6 +8,7 @@ st.set_page_config(
 import pandas as pd
 import plotly.express as px
 from utils.data_loader import load_data
+import numpy as np
 
 
 # 2) Carregamento de dados
