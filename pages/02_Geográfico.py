@@ -48,6 +48,8 @@ delta_estados = estados_2025 - estados_2024
 paises_2025 = df_2025['País'].nunique()
 paises_2024 = df_2024['País'].nunique()
 delta_paises = paises_2025 - paises_2024
+print(sorted(df_2024_est['estado_proc'].unique()))
+
 
 # 3) Participantes Internacionais (idem)
 mask_int_2025 = df_2025['País'].str.lower() != 'brasil'
