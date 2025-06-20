@@ -80,8 +80,8 @@ col2.metric(
 )
 col3.metric(
     "Taxa de Confirmação",
-    f"{tax_2025:.1f}%",           # valor percentual de taxa
-    f"{pct_tax:.1f}%"             # variação percentual em relação a 2024
+    f"{tax_2025:.1f}%" if tax_2025 is not None else "—",
+    delta_tax
 )
 col4.metric(
     "Inscrições por Dia",
