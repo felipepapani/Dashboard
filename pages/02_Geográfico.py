@@ -140,3 +140,51 @@ fig_int.update_traces(textinfo='label+percent', hoverinfo='label+percent')
 col1, col2 = st.columns(2)
 col1.plotly_chart(fig_states, use_container_width=True)
 col2.plotly_chart(fig_int,   use_container_width=True)
+
+
+# ——— 7) Distribuição por Região — Comparativo 2024 vs 2025 ———
+
+# (a) Se não houver coluna 'Região' nos DataFrames, derive a partir da sigla de estado:
+region_map = {
+    'AC':'Norte','AP':'Norte','AM':'Norte','PA':'Norte','RO':'Norte','RR':'Norte','TO':'Norte',
+    'CE':'Nordeste','MA':'Nordeste','PB':'Nordeste','PE':'Nordeste','PI':'Nordeste','RN':'Nordeste','SE':'Nordeste','AL':'Nordeste','BA':'Nordeste',
+    'ES':'Sudeste','MG':'Sudeste','RJ':'Sudeste','SP':'Sudeste',
+    'PR':'Sul','SC':'Sul','RS':'Sul',
+    'DF':'Centro-Oeste','GO':'Centro-Oeste','MT':'Centro-Oeste','MS':'Centro-Oeste'
+}
+
+# Aplica o mapeamento
+df_2025['Região']       = df_2025['Estado'].str.upper().map(region_map)
+df_2024_est['Região']   = df_2024_est['estado_proc'].map(region_map)
+
+# (b) Contagens por região nos dois anos
+reg25 = df_2025['Região'].value_counts()
+reg24 = df_2024_est['Região'].value_counts()
+
+# Usa a ordem fixa de regiões
+regions = ['Nordeste','Sudeste','Sul','Centro-Oeste','Norte']
+cnt25 = reg25.reindex(regions, fill_value=0)
+cnt24 = reg24.reindex(regions, fill_value=0)
+
+# Monta DataFrame tidy
+df_reg = pd.DataFrame({
+    'Região': regions,
+    '2024': cnt24.values,
+    '2025': cnt25.values
+}).melt(id_vars='Região', var_name='Ano', value_name='Inscrições')
+
+# (c) Gera o gráfico
+fig_reg = px.bar(
+    df_reg,
+    x='Região',
+    y='Inscrições',
+    color='Ano',
+    barmode='group',
+    category_orders={'Região': regions},
+    color_discrete_map={'2024':'#888888','2025':'#00CC66'},
+    title='Distribuição por Região — Comparativo 2024 vs 2025',
+    labels={'Inscrições':'Nº Inscrições'}
+)
+
+# (d) Exibe em full width abaixo dos dois primeiros gráficos
+st.plotly_chart(fig_reg, use_container_width=True)
