@@ -18,8 +18,8 @@ df_2024 = load_data(path="./dados/2024.csv")
 
 # ========== Novas métricas ==========
 # datas de início fixas (já definidas antes)
-# start_2024 = pd.Timestamp('2024-07-04 17:30:00')
-# start_2025 = pd.Timestamp('2025-06-12 08:00:00')
+start_2024 = pd.Timestamp('2024-07-04 17:30:00')
+start_2025 = pd.Timestamp('2025-06-12 08:00:00')
 
 # 1) Média de idade
 df_2025['Data de nascimento'] = pd.to_datetime(
