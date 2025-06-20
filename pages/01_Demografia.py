@@ -228,7 +228,7 @@ fig_age = px.bar(
 )
 
 st.plotly_chart(fig_age, use_container_width=True)
-
+import plotly.graph_objects as go
 # 1) prepara dados
 # 1) configurações iniciais
 col_gen   = 'Com qual gênero você se identifica?'
