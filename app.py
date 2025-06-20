@@ -131,7 +131,8 @@ fig = px.line(
     color='ano',
     labels={
         'dias_desde_inicio': 'Dias desde Início',
-        'inscricoes_acumuladas': 'Total de Inscrições','Confirmação email':"Status do E-mail"
+        'inscricoes_acumuladas': 'Total de Inscrições',
+        'ano': 'Ano'
     },
     title="Comparativo de Inscrições Acumuladas"
 )
@@ -140,3 +141,7 @@ st.plotly_chart(fig, use_container_width=True)
 # Exibir tabela com os dados usados no gráfico
 st.subheader("Tabela de Inscrições Acumuladas")
 st.dataframe(df_concat)
+
+# Exibir tabela completa raw da API
+st.subheader("Dados Brutos da API (2025)")
+st.dataframe(df_2025)
