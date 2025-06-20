@@ -275,17 +275,15 @@ monthly = monthly.sort_values('mes')
 
 import plotly.graph_objects as go
 
-# --- supondo que você já tenha o DataFrame `monthly` com colunas ['mes','genero_cat','pct'] ---
-# e que esteja ordenado de Jun a Dez
+# --- supondo que você já tenha o DataFrame `monthly` com ['mes','genero_cat','pct'] ---
 
-# 1) Filtra séries
-fem = monthly[monthly['genero_cat']=='Feminino']
+# separa as séries
+fem  = monthly[monthly['genero_cat']=='Feminino']
 masc = monthly[monthly['genero_cat']=='Masculino']
 
-# 2) Cria figura
 fig = go.Figure()
 
-# Feminino no eixo y (esquerdo)
+# Feminino no eixo y (esquerdo), 0 embaixo → 100 em cima
 fig.add_trace(go.Scatter(
     x=fem['mes'], y=fem['pct'],
     mode='lines+markers',
@@ -294,7 +292,7 @@ fig.add_trace(go.Scatter(
     marker=dict(size=6)
 ))
 
-# Masculino no eixo y2 (direito, invertido)
+# Masculino no eixo y2 (direito), mas range fixo 0→100 invertido
 fig.add_trace(go.Scatter(
     x=masc['mes'], y=masc['pct'],
     mode='lines+markers',
@@ -304,7 +302,6 @@ fig.add_trace(go.Scatter(
     yaxis='y2'
 ))
 
-# 3) Layout com eixos duplos
 fig.update_layout(
     title='Evolução Mensal por Gênero em 2025 (Jun–Dez)',
     xaxis=dict(title='Mês'),
@@ -315,11 +312,10 @@ fig.update_layout(
     ),
     yaxis2=dict(
         title='% Masculino',
-        range=[0,100],
-        autorange='reversed',   # inverte de 0 (topo) → 100 (fundo)
+        range=[100,0],        # mesmo intervalo, mas invertido
+        ticksuffix='%',
         overlaying='y',
-        side='right',
-        ticksuffix='%'
+        side='right'
     ),
     hovermode='x unified'
 )
