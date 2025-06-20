@@ -22,17 +22,38 @@ start_2024 = pd.Timestamp('2024-07-04 17:30:00')
 start_2025 = pd.Timestamp('2025-06-12 08:00:00')
 
 # 1) Média de idade
-df_2025['Data de nascimento'] = pd.to_datetime(
-    df_2025['Data de nascimento'], dayfirst=True, errors='coerce'
+df_2024["Data de nascimento"] = pd.to_datetime(
+    df_2024["Data de nascimento"],
+    format="%d/%m/%Y",    # dia/mês/ano
+    dayfirst=True,
+    errors="coerce"
 )
-df_2024['Data de nascimento'] = pd.to_datetime(
-    df_2024['Data de nascimento'], dayfirst=True, errors='coerce'
+df_2025["Data de nascimento"] = pd.to_datetime(
+    df_2025["Data de nascimento"],
+    format="%d/%m/%Y",
+    dayfirst=True,
+    errors="coerce"
 )
-age_2025 = (start_2025 - df_2025['Data de nascimento']).dt.days / 365.25
-age_2024 = (start_2024 - df_2024['Data de nascimento']).dt.days / 365.25
-mean_age_2025 = age_2025.mean()
-mean_age_2024 = age_2024.mean()
+
+# 2) Extrair só a parte date
+births_2024 = df_2024["Data de nascimento"].dt.date
+births_2025 = df_2025["Data de nascimento"].dt.date
+
+# 3) Calcular idade em dias (usando as datas fixas)
+start_date_2024 = start_2024.date()
+start_date_2025 = start_2025.date()
+
+age_days_2024 = births_2024.apply(lambda bd: (start_date_2024 - bd).days if pd.notnull(bd) else None)
+age_days_2025 = births_2025.apply(lambda bd: (start_date_2025 - bd).days if pd.notnull(bd) else None)
+
+# 4) Converter para anos e tirar a média
+age_years_2024 = age_days_2024 / 365.25
+age_years_2025 = age_days_2025 / 365.25
+
+mean_age_2024 = age_years_2024.mean()
+mean_age_2025 = age_years_2025.mean()
 delta_age = mean_age_2025 - mean_age_2024
+
 
 # 2) Participantes Femininas (cis + trans)
 mask_fem_2025 = df_2025['Com qual gênero você se identifica?'] \
