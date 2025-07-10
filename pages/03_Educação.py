@@ -127,6 +127,56 @@ fig_dist = px.bar(
 )
 st.plotly_chart(fig_dist, use_container_width=True)
 
+# --- 4) Top 10 Temas de Interesse — Principais áreas de interesse com crescimento ---
+temas25 = (
+    df_2025['Temas de interesse']
+      .dropna()
+      .str.split(',')
+      .explode()
+      .str.strip()
+)
+temas24 = (
+    df_2024['Temas de interesse']
+      .dropna()
+      .str.split(',')
+      .explode()
+      .str.strip()
+)
+
+cnt25 = temas25.value_counts()
+cnt24 = temas24.value_counts()
+
+top10 = cnt25.head(10).index.tolist()
+max_count = cnt25[top10].max()
+
+st.markdown("## Top 10 Temas de Interesse — Crescimento vs 2024")
+for i, tema in enumerate(top10, start=1):
+    c25 = int(cnt25.get(tema, 0))
+    c24 = int(cnt24.get(tema, 0))
+
+    # calcula delta%
+    if c24 > 0:
+        delta = (c25 - c24) / c24 * 100
+    else:
+        delta = 0
+    delta_str = f"{delta:+.1f}%"
+
+    # cor do delta
+    color = "green" if delta >= 0 else "red"
+
+    # monta 4 colunas: ranking, tema+count, delta, barra
+    col1, col2, col3, col4 = st.columns([0.5, 4, 1, 3])
+    with col1:
+        st.markdown(f"**{i}**")
+    with col2:
+        st.markdown(f"**{tema}**  \n{c25} interessados")
+    with col3:
+        st.markdown(f"<span style='color:{color}'>{delta_str}</span>", unsafe_allow_html=True)
+    with col4:
+        # barra de progresso de 0 a 1
+        st.progress(c25 / max_count)
+
+
 # --- 3) Evolução do Nível Educacional — Tendência dos últimos 5 anos ---
 # Para evolução, use df['Escolaridade_proc'] ou df['Escolaridade_raw'] conforme desejado
 # Exemplo com proc agrupado:
