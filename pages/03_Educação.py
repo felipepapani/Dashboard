@@ -44,7 +44,8 @@ def normalize_proc(series: pd.Series) -> pd.Series:
 def normalize_raw(series: pd.Series) -> pd.Series:
     # Mantém cada categoria separada, apenas padroniza capitalização
     return (
-        series.astype(str)
+        series.dropna()
+              .astype(str)
               .str.strip()
               .str.lower()
               .str.replace(r"\s+", " ", regex=True)
@@ -92,16 +93,19 @@ for col, (label, pct25, pct24, delta) in zip(cols, stats):
     )
 
 # --- 2) Distribuição por Escolaridade — Comparativo 2024 vs 2025 ---
-# Usa categorias separadas (raw)
+# Usa categorias separadas (raw), removendo NaN e vazios
+valid_24 = df_2024['Escolaridade_raw'].dropna().loc[lambda s: s != '']
+valid_25 = df_2025['Escolaridade_raw'].dropna().loc[lambda s: s != '']
+
 dist_24 = (
-    df_2024['Escolaridade_raw']
+    valid_24
     .value_counts(normalize=True)
     .mul(100)
     .rename_axis('Escolaridade')
     .reset_index(name='2024')
 )
 dist_25 = (
-    df_2025['Escolaridade_raw']
+    valid_25
     .value_counts(normalize=True)
     .mul(100)
     .rename_axis('Escolaridade')
