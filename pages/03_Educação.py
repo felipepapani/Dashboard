@@ -19,7 +19,7 @@ df_2024 = load_data(path="./dados/2024.csv")
 # df_2022 = load_data(path="./dados/2022.csv")
 
 # --- Pré-processamento de Escolaridade ---
-# Mapeia todas as variações para 5 categorias principais
+# Mapeia para 5 categorias principais (para KPIs)
 mapping = {
     'ensino básico em andamento': 'Ensino Básico',
     'ensino básico completo': 'Ensino Básico',
@@ -33,85 +33,75 @@ mapping = {
     'doutorado': 'Doutorado'
 }
 
-def normalize_escolaridade(series: pd.Series) -> pd.Series:
+def normalize_proc(series: pd.Series) -> pd.Series:
     return (
-        series
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .map(mapping)
+        series.astype(str)
+              .str.strip()
+              .str.lower()
+              .map(mapping)
+    )
+
+def normalize_raw(series: pd.Series) -> pd.Series:
+    # Mantém cada categoria separada, apenas padroniza capitalização
+    return (
+        series.astype(str)
+              .str.strip()
+              .str.lower()
+              .str.replace(r"\s+", " ", regex=True)
+              .str.title()
     )
 
 # Aplica normalização
-df_2024['Escolaridade_proc'] = normalize_escolaridade(df_2024['Escolaridade'])
-df_2025['Escolaridade_proc'] = normalize_escolaridade(df_2025['Escolaridade'])
+for df in (df_2024, df_2025):
+    df['Escolaridade_proc'] = normalize_proc(df['Escolaridade'])
+    df['Escolaridade_raw']  = normalize_raw(df['Escolaridade'])
 
-# --- 1) Métricas Principais ---
+# --- 1) Métricas Principais (5 KPIs) ---
 total_2025 = len(df_2025)
 total_2024 = len(df_2024)
 
-def calc_pct(df, cat):
+def pct(df, cat):
     return df['Escolaridade_proc'].eq(cat).sum() / len(df) * 100
 
-# Calcula porcentagens para cada card
-pct_bas2025 = calc_pct(df_2025, 'Ensino Básico')
-pct_bas2024 = calc_pct(df_2024, 'Ensino Básico')
-delta_bas   = pct_bas2025 - pct_bas2024
+# Calcula porcentagens para cada KPI
+stats = []
+cats = [
+    ('Ensino Básico', 'Ensino Básico'),
+    ('Ensino Médio', 'Ensino Médio'),
+    ('Ensino Superior', 'Ensino Superior'),
+    ('Pós Graduação', 'Pós Graduação'),
+    ('Mestrado & Doutorado', ['Mestrado', 'Doutorado'])
+]
+for label, cat in cats:
+    if isinstance(cat, list):
+        pct25 = df_2025['Escolaridade_proc'].isin(cat).sum() / total_2025 * 100
+        pct24 = df_2024['Escolaridade_proc'].isin(cat).sum() / total_2024 * 100
+    else:
+        pct25 = pct(df_2025, cat)
+        pct24 = pct(df_2024, cat)
+    delta = pct25 - pct24
+    stats.append((label, pct25, pct24, delta))
 
-pct_med2025 = calc_pct(df_2025, 'Ensino Médio')
-pct_med2024 = calc_pct(df_2024, 'Ensino Médio')
-delta_med   = pct_med2025 - pct_med2024
-
-pct_sup2025 = calc_pct(df_2025, 'Ensino Superior')
-pct_sup2024 = calc_pct(df_2024, 'Ensino Superior')
-delta_sup   = pct_sup2025 - pct_sup2024
-
-pct_pos2025 = calc_pct(df_2025, 'Pós Graduação')
-pct_pos2024 = calc_pct(df_2024, 'Pós Graduação')
-delta_pos   = pct_pos2025 - pct_pos2024
-
-pct_mudout2025 = df_2025['Escolaridade_proc'].isin(['Mestrado', 'Doutorado']).sum() / total_2025 * 100
-pct_mudout2024 = df_2024['Escolaridade_proc'].isin(['Mestrado', 'Doutorado']).sum() / total_2024 * 100
-delta_mudout = pct_mudout2025 - pct_mudout2024
-
-# Renderiza os 5 KPIs
-cols = st.columns(5)
-cols[0].metric(
-    "Ensino Básico",
-    f"{pct_bas2025:.1f}%",
-    f"{delta_bas:+.1f}% vs {pct_bas2024:.1f}% em 2024"
-)
-cols[1].metric(
-    "Ensino Médio",
-    f"{pct_med2025:.1f}%",
-    f"{delta_med:+.1f}% vs {pct_med2024:.1f}% em 2024"
-)
-cols[2].metric(
-    "Ensino Superior",
-    f"{pct_sup2025:.1f}%",
-    f"{delta_sup:+.1f}% vs {pct_sup2024:.1f}% em 2024"
-)
-cols[3].metric(
-    "Pós Graduação",
-    f"{pct_pos2025:.1f}%",
-    f"{delta_pos:+.1f}% vs {pct_pos2024:.1f}% em 2024"
-)
-cols[4].metric(
-    "Mestrado & Doutorado",
-    f"{pct_mudout2025:.1f}%",
-    f"{delta_mudout:+.1f}% vs {pct_mudout2024:.1f}% em 2024"
-)
+# Renderiza os KPIs
+cols = st.columns(len(stats))
+for col, (label, pct25, pct24, delta) in zip(cols, stats):
+    col.metric(
+        label,
+        f"{pct25:.1f}%",
+        f"{delta:+.1f}% vs {pct24:.1f}% em 2024"
+    )
 
 # --- 2) Distribuição por Escolaridade — Comparativo 2024 vs 2025 ---
+# Usa categorias separadas (raw)
 dist_24 = (
-    df_2024['Escolaridade_proc']
+    df_2024['Escolaridade_raw']
     .value_counts(normalize=True)
     .mul(100)
     .rename_axis('Escolaridade')
     .reset_index(name='2024')
 )
 dist_25 = (
-    df_2025['Escolaridade_proc']
+    df_2025['Escolaridade_raw']
     .value_counts(normalize=True)
     .mul(100)
     .rename_axis('Escolaridade')
@@ -128,13 +118,14 @@ fig_dist = px.bar(
     color='Ano',
     orientation='h',
     barmode='group',
-    title='Distribuição por Escolaridade — Comparativo 2024 vs 2025',
+    title='Distribuição por Escolaridade — Categorias Detalhadas',
     labels={'Percentual':'% Inscrições'}
 )
 st.plotly_chart(fig_dist, use_container_width=True)
 
 # --- 3) Evolução do Nível Educacional — Tendência dos últimos 5 anos ---
-# Adicione anos históricos conforme disponível e descomente abaixo:
+# Para evolução, use df['Escolaridade_proc'] ou df['Escolaridade_raw'] conforme desejado
+# Exemplo com proc agrupado:
 # df_hist = pd.concat([
 #     df_2021.assign(Ano=2021),
 #     df_2022.assign(Ano=2022),
@@ -142,11 +133,6 @@ st.plotly_chart(fig_dist, use_container_width=True)
 #     df_2024.assign(Ano=2024),
 #     df_2025.assign(Ano=2025)
 # ])
-# df_evo = (
-#     df_hist.groupby(['Ano','Escolaridade_proc']).size().reset_index(name='Contagem')
-# )
-# fig_evo = px.line(
-#     df_evo, x='Ano', y='Contagem', color='Escolaridade_proc', markers=True,
-#     title='Evolução do Nível Educacional — Tendência dos últimos 5 anos'
-# )
+# df_evo = df_hist.groupby(['Ano','Escolaridade_proc']).size().reset_index(name='Contagem')
+# fig_evo = px.line(df_evo, x='Ano', y='Contagem', color='Escolaridade_proc', markers=True)
 # st.plotly_chart(fig_evo, use_container_width=True)
