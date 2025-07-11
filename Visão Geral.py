@@ -22,8 +22,8 @@ total_2024 = len(df_2024)
 pct_total = (total_2025 - total_2024) / total_2024 * 100 if total_2024 else None
 
 # E-mails Confirmados (Status do E-mail contendo 'confirm')
-confirmed_2025 = df_2025['emailStatus'].str.contains('confirm', case=False, na=False).sum()
-confirmed_2024 = df_2024['emailStatus'].str.contains('confirm', case=False, na=False).sum()
+confirmed_2025 = df_2025['Status do E-mail'].str.contains('confirm', case=False, na=False).sum()
+confirmed_2024 = df_2024['Status do E-mail'].str.contains('confirm', case=False, na=False).sum()
 pct_confirmed = (confirmed_2025 - confirmed_2024) / confirmed_2024 * 100 if confirmed_2024 else None
 
 # Taxa de Confirmação
