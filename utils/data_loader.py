@@ -8,16 +8,16 @@ import time
 def load_data(path: str = None) -> pd.DataFrame:
     """
     Carrega dados de CSV (quando `path` informado) ou via API (quando `path` é None ou vazio).
-    Aplica tratamento de timestamps, expande `formFields` e padroniza o header.
+    Aplica tratamento de timestamps, expande `formFields`, padroniza o header e garante
+    que exista a coluna "Status do E-mail", mesmo que venha com outra grafia.
     """
     # 1. Carregamento bruto
     if not path:
-        # Verifica configuração de secrets
         url = st.secrets.get("URL")
         key = st.secrets.get("API_KEY")
         if not url or not key:
             raise ValueError(
-                "Chave de API ou URL não configurada. Por favor, defina 'api_url' e 'api_key' em st.secrets."
+                "Chave de API ou URL não configurada. Por favor, defina 'URL' e 'API_KEY' em st.secrets."
             )
         headers = {
             "Content-Type": "application/json",
@@ -27,13 +27,11 @@ def load_data(path: str = None) -> pd.DataFrame:
         participants = []
         seen_emails = set()
         first_email = ""
-        # Paginação até esgotar
         while True:
             body = {"firstEmail": first_email}
             resp = requests.post(url, json=body, headers=headers, timeout=30)
             resp.raise_for_status()
             envelope = resp.json()
-            # Extrai payload real
             payload = (
                 json.loads(envelope["body"]) if isinstance(envelope.get("body"), str)
                 else envelope
@@ -53,7 +51,6 @@ def load_data(path: str = None) -> pd.DataFrame:
             time.sleep(0.1)
         df = pd.DataFrame(participants)
     else:
-        # Lê CSV
         df = pd.read_csv(
             path,
             sep=";",
@@ -61,12 +58,10 @@ def load_data(path: str = None) -> pd.DataFrame:
             on_bad_lines="skip"
         )
 
-    # 2. Tratamento de timestamp (createdAt em milissegundos)
+    # 2. Tratamento de timestamps
     if 'createdAt' in df.columns:
         df['createdAt_ms'] = df['createdAt'].astype(int)
-        df['createdAt_utc'] = pd.to_datetime(
-            df['createdAt_ms'], unit='ms', utc=True
-        )
+        df['createdAt_utc'] = pd.to_datetime(df['createdAt_ms'], unit='ms', utc=True)
         df['createdAt_local'] = (
             df['createdAt_utc'].dt.tz_convert('America/Sao_Paulo')
             .dt.tz_localize(None)
@@ -87,10 +82,9 @@ def load_data(path: str = None) -> pd.DataFrame:
                 rec[item.get('id')] = val
             records.append(rec)
         fields_wide = pd.DataFrame(records, index=df.index)
-        df = pd.concat([df, fields_wide], axis=1)
-        df = df.drop(columns=['formFields'])
+        df = pd.concat([df, fields_wide], axis=1).drop(columns=['formFields'])
 
-    # 4. Padronização do header, se necessário
+    # 4. Padronização do header
     header_str = """
     "Email";"Tipo de ingresso";"Nome na credencial";"Nome";"apagar1";"QR Code";"Status do E-mail";
     "APAGAR";"APAGAR";"Headline";"APAGAR";"APAGAR";"APAGAR";
@@ -101,13 +95,16 @@ def load_data(path: str = None) -> pd.DataFrame:
     "Você desenvolve alguma atividade empresarial?";"Já foi atendido pelo Sebrae?";"APAGAR";"APAGAR"
     """.strip().replace("\n", "")
     columns = [col.strip('"') for col in header_str.split(';')]
-    if len(columns) == len(df.columns):
-        df.columns = columns
-    
+
+    # Força renomeação direta (ValueError se o número de colunas não bater)
+    df.columns = columns
+
+    # 5. Remove todas as colunas contendo "apagar"
     df = df.loc[:, ~df.columns.str.lower().str.contains(r'apagar')]
 
-    # Opção 2: list comprehension + drop
-    cols_to_drop = [col for col in df.columns if 'apagar' in col.lower()]
-    df = df.drop(columns=cols_to_drop)
+    # 6. Fallback para garantir que exista "Status do E-mail"
+    candidates = [c for c in df.columns if 'status' in c.lower() and 'email' in c.lower()]
+    if candidates:
+        df.rename(columns={candidates[0]: 'Status do E-mail'}, inplace=True)
 
     return df
