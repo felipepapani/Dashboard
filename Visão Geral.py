@@ -158,8 +158,8 @@ df_2024 = load_data(path="./dados/2024.csv")
 # st.plotly_chart(fig, use_container_width=True)
 
 # Exibir tabela com os dados usados no gráfico
-st.subheader("Tabela de Inscrições Acumuladas")
-st.dataframe(df_concat)
+# st.subheader("Tabela de Inscrições Acumuladas")
+# st.dataframe(df_concat)
 
 # Exibir tabela completa raw da API
 st.subheader("Dados Brutos da API (2025)")
