@@ -91,15 +91,15 @@ def load_data(path: str = None) -> pd.DataFrame:
         df = df.drop(columns=['formFields'])
 
     # 4. Padronização do header, se necessário
-    header_str = (
-    '"Email";"Tipo de ingresso";"Nome na credencial";"Nome";"apagar1";"QR Code";"Status do E-mail";'
-    '"APAGAR";"APAGAR";"Headline";"APAGAR";"APAGAR";"APAGAR";'
-    '"APAGAR";"APAGAR";"Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";'
-    '"Com qual gênero você se identifica?";"Participou de algum RNP anterior? Se sim, quais as edições?";"Escolaridade";'
-    '"Temas de interesse";"Qual a sua principal área de atuação?";"Você é professor?";"Em qual empresa você trabalha?";'
-    '"Trabalha com tecnologia?;"A empresa em que você trabalha faz parte do Porto Digital?";"Você desenvolve alguma atividade empresarial?";'
-    '"Já foi atendido pelo Sebrae?";"APAGAR";"APAGAR"'
-)
+    header_str = """
+    "Email";"Tipo de ingresso";"Nome na credencial";"Nome";"apagar1";"QR Code";"Status do E-mail";
+    "APAGAR";"APAGAR";"Headline";"APAGAR";"APAGAR";"APAGAR";
+    "APAGAR";"APAGAR";"Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";
+    "Com qual gênero você se identifica?";"Participou de algum RNP anterior? Se sim, quais as edições?";"Escolaridade";
+    "Temas de interesse";"Qual a sua principal área de atuação?";"Você é professor?";"Em qual empresa você trabalha?";
+    "Trabalha com tecnologia?";"A empresa em que você trabalha faz parte do Porto Digital?";
+    "Você desenvolve alguma atividade empresarial?";"Já foi atendido pelo Sebrae?";"APAGAR";"APAGAR"
+    """.strip().replace("\n", "")
     columns = [col.strip('"') for col in header_str.split(';')]
     if len(columns) == len(df.columns):
         df.columns = columns
