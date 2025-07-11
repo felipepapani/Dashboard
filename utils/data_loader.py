@@ -10,84 +10,63 @@ import re
 def load_data(path: str = None) -> pd.DataFrame:
     """
     Carrega dados de CSV (quando `path` informado) ou via API (quando `path` é None ou vazio).
-    Aplica tratamento de timestamps, expande `formFields`, padroniza somente as colunas
-    que correspondem ao header desejado (sem forçar tamanho), e garante que a coluna
-    "Status do E-mail" exista mesmo que venha com outra grafia.
+    Expande formFields, padroniza somente as colunas que batem com o header desejado,
+    e garante que todas as colunas desejadas existam (criando-as vazias se não vierem).
     """
     # 1. Carregamento bruto
     if not path:
         url = st.secrets.get("URL")
         key = st.secrets.get("API_KEY")
         if not url or not key:
-            raise ValueError(
-                "Chave de API ou URL não configurada. Defina 'URL' e 'API_KEY' em st.secrets."
-            )
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": key,
-        }
-        participants = []
-        seen_emails = set()
-        first_email = ""
+            raise ValueError("Defina 'URL' e 'API_KEY' em st.secrets.")
+        hdr = {"Content-Type":"application/json","Accept":"application/json","Authorization":key}
+        participants, seen, first = [], set(), ""
         while True:
-            body = {"firstEmail": first_email}
-            resp = requests.post(url, json=body, headers=headers, timeout=30)
+            resp = requests.post(url, json={"firstEmail": first}, headers=hdr, timeout=30)
             resp.raise_for_status()
-            envelope = resp.json()
-            payload = (
-                json.loads(envelope["body"]) if isinstance(envelope.get("body"), str)
-                else envelope
-            )
+            env = resp.json()
+            payload = json.loads(env["body"]) if isinstance(env.get("body"), str) else env
             batch = payload.get("participants", []) or payload.get("items", [])
-            if not batch:
-                break
-            for guest in batch:
-                email = guest.get("email")
-                if email and email not in seen_emails:
-                    seen_emails.add(email)
-                    participants.append(guest)
-            last_email = payload.get("lastEmail", "")
-            if not last_email:
-                break
-            first_email = last_email
+            if not batch: break
+            for g in batch:
+                e = g.get("email")
+                if e and e not in seen:
+                    seen.add(e)
+                    participants.append(g)
+            first = payload.get("lastEmail","")
+            if not first: break
             time.sleep(0.1)
         df = pd.DataFrame(participants)
     else:
-        df = pd.read_csv(
-            path,
-            sep=";",
-            engine="python",
-            on_bad_lines="skip"
-        )
+        df = pd.read_csv(path, sep=";", engine="python", on_bad_lines="skip")
 
     # 2. Tratamento de timestamps
-    if 'createdAt' in df.columns:
-        df['createdAt_ms'] = df['createdAt'].astype(int)
-        df['createdAt_utc'] = pd.to_datetime(df['createdAt_ms'], unit='ms', utc=True)
-        df['createdAt_local'] = (
-            df['createdAt_utc'].dt.tz_convert('America/Sao_Paulo')
-            .dt.tz_localize(None)
+    if "createdAt" in df.columns:
+        df["createdAt_ms"] = df["createdAt"].astype(int)
+        df["createdAt_utc"] = pd.to_datetime(df["createdAt_ms"], unit="ms", utc=True)
+        df["createdAt_local"] = (
+            df["createdAt_utc"].dt.tz_convert("America/Sao_Paulo")
+                              .dt.tz_localize(None)
         )
-        df['data'] = df['createdAt_local'].dt.date
-        df['hora'] = df['createdAt_local'].dt.time
-        df['createdAt_str'] = df['createdAt_local'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        df["data"] = df["createdAt_local"].dt.date
+        df["hora"] = df["createdAt_local"].dt.time
+        df["createdAt_str"] = df["createdAt_local"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    # 3. Expansão de formFields para colunas wide
-    if 'formFields' in df.columns:
-        records = []
-        for lst in df['formFields']:
-            rec = {}
-            for item in lst:
-                val = item.get('value')
-                if isinstance(val, list):
-                    val = ", ".join(val)
-                rec[item.get('id')] = val
-            records.append(rec)
-        fields_wide = pd.DataFrame(records, index=df.index)
-        df = pd.concat([df, fields_wide], axis=1).drop(columns=['formFields'])
+    # 3. Expansão de formFields
+    if "formFields" in df.columns:
+        recs = []
+        for lst in df["formFields"]:
+            row = {}
+            for it in lst:
+                v = it.get("value")
+                if isinstance(v, list):
+                    v = ", ".join(v)
+                row[it.get("id")] = v
+            recs.append(row)
+        wide = pd.DataFrame(recs, index=df.index)
+        df = pd.concat([df, wide], axis=1).drop(columns=["formFields"])
 
-    # 4. Lista de nomes de header desejados
+    # 4. Header desejado
     header_str = """
     "Email";"Tipo de ingresso";"Nome na credencial";"Nome";"QR Code";"Status do E-mail";
     "Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";
@@ -96,34 +75,31 @@ def load_data(path: str = None) -> pd.DataFrame:
     "Trabalha com tecnologia?";"A empresa em que você trabalha faz parte do Porto Digital?";
     "Você desenvolve alguma atividade empresarial?";"Já foi atendido pelo Sebrae?"
     """
-    desired = [col.strip('"') for col in header_str.strip().replace("\n", "").split(";")]
+    desired = [c.strip('"') for c in header_str.strip().replace("\n","").split(";")]
 
-    # 5. Função para normalizar texto (remove acentos, pontuação, espaços extras)
-    def normalize(text: str) -> str:
-        nfkd = unicodedata.normalize("NFKD", text)
-        only_ascii = nfkd.encode("ASCII", "ignore").decode("utf-8")
-        cleaned = re.sub(r"[^\w]", "", only_ascii).lower()
-        return cleaned
+    # 5. Normalização helper
+    def _norm(s: str) -> str:
+        s = unicodedata.normalize("NFKD", s).encode("ascii","ignore").decode()
+        return re.sub(r"\W+","", s).lower()
 
-    # 6. Constrói mapeamento raw_col -> desired_col quando normalizados baterem
+    # 6. Mapeia colunas existentes para as desejadas, via forma normalizada
     raw = df.columns.tolist()
-    norm_raw = {col: normalize(col) for col in raw}
-    norm_desired = {normalize(col): col for col in desired}
+    norm_raw = {c: _norm(c) for c in raw}
+    norm_des = { _norm(c): c for c in desired }
     rename_map = {
-        raw_col: norm_desired[norm_raw[raw_col]]
-        for raw_col in raw
-        if norm_raw[raw_col] in norm_desired
+        orig: norm_des[norm_raw[orig]]
+        for orig in raw
+        if norm_raw[orig] in norm_des
     }
-    df.rename(columns=rename_map, inplace=True)
+    df = df.rename(columns=rename_map)
 
-    # 7. Remove quaisquer colunas "APAGAR" que ainda existam
-    to_drop = [c for c in df.columns if "apagar" in c.lower()]
-    df.drop(columns=to_drop, inplace=True)
+    # 7. Descarta colunas "APAGAR"
+    df = df.loc[:, ~df.columns.str.lower().str.contains("apagar")]
 
-    # 8. Garante que exista a coluna exata "Status do E-mail"
-    #    (renomeia qualquer variante que contenha 'status' e 'email')
-    candidates = [c for c in df.columns if "status" in c.lower() and "email" in c.lower()]
-    if candidates and "Status do E-mail" not in df.columns:
-        df.rename(columns={candidates[0]: "Status do E-mail"}, inplace=True)
+    # 8. Garante todas as desejadas existem (preenche com NaN)
+    for c in desired:
+        if c not in df.columns:
+            df[c] = pd.NA
 
+    # 9. Retorna só as desejadas + quaisquer extras
     return df
