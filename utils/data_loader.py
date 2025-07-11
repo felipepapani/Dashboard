@@ -3,13 +3,16 @@ import pandas as pd
 import requests
 import json
 import time
+import unicodedata
+import re
 
 @st.cache_data(ttl=600)
 def load_data(path: str = None) -> pd.DataFrame:
     """
     Carrega dados de CSV (quando `path` informado) ou via API (quando `path` é None ou vazio).
-    Aplica tratamento de timestamps, expande `formFields`, padroniza o header e garante
-    que exista a coluna "Status do E-mail", mesmo que venha com outra grafia.
+    Aplica tratamento de timestamps, expande `formFields`, padroniza somente as colunas
+    que correspondem ao header desejado (sem forçar tamanho), e garante que a coluna
+    "Status do E-mail" exista mesmo que venha com outra grafia.
     """
     # 1. Carregamento bruto
     if not path:
@@ -17,7 +20,7 @@ def load_data(path: str = None) -> pd.DataFrame:
         key = st.secrets.get("API_KEY")
         if not url or not key:
             raise ValueError(
-                "Chave de API ou URL não configurada. Por favor, defina 'URL' e 'API_KEY' em st.secrets."
+                "Chave de API ou URL não configurada. Defina 'URL' e 'API_KEY' em st.secrets."
             )
         headers = {
             "Content-Type": "application/json",
@@ -84,27 +87,43 @@ def load_data(path: str = None) -> pd.DataFrame:
         fields_wide = pd.DataFrame(records, index=df.index)
         df = pd.concat([df, fields_wide], axis=1).drop(columns=['formFields'])
 
-    # 4. Padronização do header
+    # 4. Lista de nomes de header desejados
     header_str = """
-    "Email";"Tipo de ingresso";"Nome na credencial";"Nome";"apagar1";"QR Code";"Status do E-mail";
-    "APAGAR";"APAGAR";"Headline";"APAGAR";"APAGAR";"APAGAR";
-    "APAGAR";"APAGAR";"Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";
+    "Email";"Tipo de ingresso";"Nome na credencial";"Nome";"QR Code";"Status do E-mail";
+    "Data Inscrição";"Telefone";"País";"Estado";"Cidade";"CPF";"Passaporte";"Data de nascimento";
     "Com qual gênero você se identifica?";"Participou de algum RNP anterior? Se sim, quais as edições?";"Escolaridade";
     "Temas de interesse";"Qual a sua principal área de atuação?";"Você é professor?";"Em qual empresa você trabalha?";
     "Trabalha com tecnologia?";"A empresa em que você trabalha faz parte do Porto Digital?";
-    "Você desenvolve alguma atividade empresarial?";"Já foi atendido pelo Sebrae?";"APAGAR";"APAGAR"
-    """.strip().replace("\n", "")
-    columns = [col.strip('"') for col in header_str.split(';')]
+    "Você desenvolve alguma atividade empresarial?";"Já foi atendido pelo Sebrae?"
+    """
+    desired = [col.strip('"') for col in header_str.strip().replace("\n", "").split(";")]
 
-    # Força renomeação direta (ValueError se o número de colunas não bater)
-    df.columns = columns
+    # 5. Função para normalizar texto (remove acentos, pontuação, espaços extras)
+    def normalize(text: str) -> str:
+        nfkd = unicodedata.normalize("NFKD", text)
+        only_ascii = nfkd.encode("ASCII", "ignore").decode("utf-8")
+        cleaned = re.sub(r"[^\w]", "", only_ascii).lower()
+        return cleaned
 
-    # 5. Remove todas as colunas contendo "apagar"
-    df = df.loc[:, ~df.columns.str.lower().str.contains(r'apagar')]
+    # 6. Constrói mapeamento raw_col -> desired_col quando normalizados baterem
+    raw = df.columns.tolist()
+    norm_raw = {col: normalize(col) for col in raw}
+    norm_desired = {normalize(col): col for col in desired}
+    rename_map = {
+        raw_col: norm_desired[norm_raw[raw_col]]
+        for raw_col in raw
+        if norm_raw[raw_col] in norm_desired
+    }
+    df.rename(columns=rename_map, inplace=True)
 
-    # 6. Fallback para garantir que exista "Status do E-mail"
-    candidates = [c for c in df.columns if 'status' in c.lower() and 'email' in c.lower()]
-    if candidates:
-        df.rename(columns={candidates[0]: 'Status do E-mail'}, inplace=True)
+    # 7. Remove quaisquer colunas "APAGAR" que ainda existam
+    to_drop = [c for c in df.columns if "apagar" in c.lower()]
+    df.drop(columns=to_drop, inplace=True)
+
+    # 8. Garante que exista a coluna exata "Status do E-mail"
+    #    (renomeia qualquer variante que contenha 'status' e 'email')
+    candidates = [c for c in df.columns if "status" in c.lower() and "email" in c.lower()]
+    if candidates and "Status do E-mail" not in df.columns:
+        df.rename(columns={candidates[0]: "Status do E-mail"}, inplace=True)
 
     return df
