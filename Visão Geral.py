@@ -13,7 +13,6 @@ st.set_page_config(
 # ——— Helpers —————————————————————————————————————————————————————————
 
 def _normalize(text: str) -> str:
-    """Remove acentos, pontuação e espaços, retorna só letras/minúsculas."""
     nfkd = unicodedata.normalize("NFKD", text)
     ascii_only = nfkd.encode("ASCII", "ignore").decode("utf-8")
     return re.sub(r"\W+", "", ascii_only).lower()
@@ -21,7 +20,7 @@ def _normalize(text: str) -> str:
 def find_column(df: pd.DataFrame, *keywords: str) -> str:
     """
     Retorna o nome da primeira coluna cujo nome normalizado contenha
-    todos os pedaços em `keywords` (também normalizados).
+    todos os pedaços em `keywords`.
     """
     norms = {col: _normalize(col) for col in df.columns}
     for col, norm in norms.items():
@@ -34,29 +33,29 @@ def find_column(df: pd.DataFrame, *keywords: str) -> str:
 df_2025 = load_data(path=None)
 df_2024 = load_data(path="./dados/2024.csv")
 
-# ——— Detecta Colunas Dinamicamente ——————————————————————————————————————
+# ——— Detecta Colunas Dinamicamente para CADA DataFrame ————————————————
 
-# Procuramos a coluna de data de inscrição (pode vir como 'data', 'createdAt', 'data_inscricao' etc)
-date_col = find_column(df_2025, "data", "inscricao")
+date_col_25   = find_column(df_2025, "data", "inscricao")
+status_col_25 = find_column(df_2025, "status", "email")
 
-# Procuramos a coluna de status de e-mail (pode vir como 'status email', 'email_status' etc)
-status_col = find_column(df_2025, "status", "email")
+date_col_24   = find_column(df_2024, "data", "inscricao")
+status_col_24 = find_column(df_2024, "status", "email")
 
 # ——— Converte para datetime ————————————————————————————————————————————
 
-df_2025[date_col] = pd.to_datetime(df_2025[date_col], dayfirst=True, errors="coerce")
-df_2024[date_col] = pd.to_datetime(df_2024[date_col], dayfirst=True, errors="coerce")
+df_2025[date_col_25] = pd.to_datetime(df_2025[date_col_25], dayfirst=True, errors="coerce")
+df_2024[date_col_24] = pd.to_datetime(df_2024[date_col_24], dayfirst=True, errors="coerce")
 
 # ——— Cálculo de Métricas —————————————————————————————————————————————————
 
-# Totais
+# Totais de inscrições
 total_2025 = len(df_2025)
 total_2024 = len(df_2024)
 pct_total  = (total_2025 - total_2024) / total_2024 * 100 if total_2024 else None
 
 # E-mails confirmados
-confirmed_2025 = df_2025[status_col].str.contains("confirm", case=False, na=False).sum()
-confirmed_2024 = df_2024[status_col].str.contains("confirm", case=False, na=False).sum()
+confirmed_2025 = df_2025[status_col_25].str.contains("confirm", case=False, na=False).sum()
+confirmed_2024 = df_2024[status_col_24].str.contains("confirm", case=False, na=False).sum()
 pct_confirmed  = ((confirmed_2025 - confirmed_2024) / confirmed_2024 * 100) if confirmed_2024 else None
 
 # Taxa de confirmação
@@ -65,11 +64,13 @@ tax_2024 = confirmed_2024 / total_2024 * 100 if total_2024 else None
 pct_tax  = ((tax_2025 - tax_2024) / tax_2024 * 100) if (tax_2024 and tax_2025 is not None) else None
 
 # Inscrições por dia
-days_2025     = df_2025[date_col].dt.date.nunique()
-days_2024     = df_2024[date_col].dt.date.nunique()
-avg_day_2025  = total_2025 / days_2025 if days_2025 else None
-avg_day_2024  = total_2024 / days_2024 if days_2024 else None
-pct_avg       = ((avg_day_2025 - avg_day_2024) / avg_day_2024 * 100) if avg_day_2024 else None
+days_2025    = df_2025[date_col_25].dt.date.nunique()
+avg_day_2025 = total_2025 / days_2025 if days_2025 else None
+
+days_2024    = df_2024[date_col_24].dt.date.nunique()
+avg_day_2024 = total_2024 / days_2024 if days_2024 else None
+
+pct_avg = ((avg_day_2025 - avg_day_2024) / avg_day_2024 * 100) if avg_day_2024 else None
 
 # ——— Exibição dos KPIs ——————————————————————————————————————————————
 
@@ -101,7 +102,10 @@ c4.metric(
 start_2024 = pd.Timestamp("2024-07-04 17:30:00")
 start_2025 = pd.Timestamp("2025-06-12 08:00:00")
 
-for df, start, year in [(df_2024, start_2024, "2024"), (df_2025, start_2025, "2025")]:
+for df, start, year, date_col in [
+    (df_2024, start_2024, "2024", date_col_24),
+    (df_2025, start_2025, "2025", date_col_25),
+]:
     df["month_index"] = (
         (df[date_col].dt.year - start.year) * 12 +
         (df[date_col].dt.month - start.month) + 1
@@ -109,7 +113,12 @@ for df, start, year in [(df_2024, start_2024, "2024"), (df_2025, start_2025, "20
     df["ano"] = year
 
 monthly = pd.concat([df_2024, df_2025])
-monthly = monthly.groupby(["ano", "month_index"]).size().reset_index(name="inscricoes")
+monthly = (
+    monthly
+    .groupby(["ano", "month_index"])
+    .size()
+    .reset_index(name="inscricoes")
+)
 
 fig_bar = px.bar(
     monthly,
@@ -121,23 +130,23 @@ fig_bar = px.bar(
     labels={
         "month_index": "Mês relativo ao início",
         "inscricoes": "Inscrições",
-        "ano": "Ano"
+        "ano": "Ano",
     },
-    title="Inscrições por Mês Relativo ao Início"
+    title="Inscrições por Mês Relativo ao Início",
 )
 st.plotly_chart(fig_bar, use_container_width=True)
 
 # ——— Inscrições Acumuladas ————————————————————————————————————————————
 
-def prepare_cumulative(df, start):
+def prepare_cumulative(df: pd.DataFrame, start: pd.Timestamp, date_col: str) -> pd.DataFrame:
     df2 = df.dropna(subset=[date_col]).sort_values(date_col)
     daily = df2.groupby(date_col).size().reset_index(name="diárias")
     daily["acumuladas"] = daily["diárias"].cumsum()
     daily["dias_desde_inicio"] = (daily[date_col] - start).dt.days
     return daily
 
-cum24 = prepare_cumulative(df_2024, start_2024).assign(ano="2024")
-cum25 = prepare_cumulative(df_2025, start_2025).assign(ano="2025")
+cum24 = prepare_cumulative(df_2024, start_2024, date_col_24).assign(ano="2024")
+cum25 = prepare_cumulative(df_2025, start_2025, date_col_25).assign(ano="2025")
 df_cum = pd.concat([cum24, cum25], ignore_index=True)
 
 fig_line = px.line(
@@ -149,13 +158,13 @@ fig_line = px.line(
     labels={
         "dias_desde_inicio": "Dias desde início",
         "acumuladas": "Total acumulado",
-        "ano": "Ano"
+        "ano": "Ano",
     },
-    title="Inscrições Acumuladas 2024 vs 2025"
+    title="Inscrições Acumuladas 2024 vs 2025",
 )
 st.plotly_chart(fig_line, use_container_width=True)
 
-# ——— Tabelas de conferência (opcional) ——————————————————————————————————
+# ——— (Opcional) Tabelas de Conferência ——————————————————————————————————
 
 st.subheader("Tabela de Inscrições Acumuladas")
 st.dataframe(df_cum)
